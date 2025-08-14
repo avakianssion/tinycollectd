@@ -1,7 +1,9 @@
 [package]
 name = "tinycollectd"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+description = "Everything that collectd gives you but better!"
+
 
 [dependencies]
 sysinfo = "0.30"
