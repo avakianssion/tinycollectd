@@ -1,8 +1,7 @@
 // src/main.rs
 mod collector;
-use serde_json::{Value, json};
 use std::time::Duration;
-use sysinfo::{Disks, Networks, System};
+use sysinfo::System;
 use tokio::net::UdpSocket;
 
 #[tokio::main]
