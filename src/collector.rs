@@ -23,6 +23,7 @@ pub fn get_sysinfo(mut sys: System) -> Value {
         "uptime": uptime,
         "cpu_freq_mhz": cpu_freq,
         "disk_usage": get_disk_usage(),
+        "smart_stats": get_smart_stats(),
         "network": get_if_data()
     })
 }
@@ -46,7 +47,7 @@ fn get_if_data() -> Vec<Value> {
 /// Function to get disk usage information.
 fn get_disk_usage() -> Vec<Value> {
     let disks = Disks::new_with_refreshed_list();
-
+    println!("{:?}", disks);
     disks
         .iter()
         .map(|disk| {
@@ -67,4 +68,12 @@ fn get_disk_usage() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+/// Function to get S.M.A.R.T. status of all disks.
+fn get_smart_stats() -> Vec<Value> {
+    Disks::new_with_refreshed_list().iter().map(|disk| {
+        println!("{:?}", disk.name());
+        json!({})
+    }).collect()
 }

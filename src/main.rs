@@ -24,7 +24,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             println!("Sent metrics to {} ({} bytes)", target, &bytes.len());
         }
-
         tokio::time::sleep(Duration::from_secs(10)).await;
     }
 }
