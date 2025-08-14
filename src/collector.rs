@@ -1,6 +1,7 @@
 //! Module to define behavior of sys info collection.
 use serde_json::{Value, json};
 use sysinfo::{Disks, Networks, System};
+use libparted::Device;
 
 /// Function to collect system metrics as single json object.
 pub fn get_sysinfo(mut sys: System) -> Value {
@@ -72,11 +73,13 @@ fn get_disk_usage() -> Vec<Value> {
 
 /// Function to get S.M.A.R.T. status of all disks.
 fn get_smart_stats() -> Vec<Value> {
-    Disks::new_with_refreshed_list()
-        .iter()
-        .map(|disk| {
-            println!("{:?}", disk.name());
-            json!({})
-        })
-        .collect()
+    Device::devices(true).map(|disk| {
+        println!("{:?}", disk.path());
+        json!({})
+    }).collect()
+}
+
+/// Helper function to get all disks in dev directory
+fn get_disks() {
+
 }
