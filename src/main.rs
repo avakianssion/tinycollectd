@@ -1,9 +1,10 @@
-// src/main.rs
+//! Main module for tinycollectd.
 mod collector;
 use std::time::Duration;
 use sysinfo::System;
 use tokio::net::UdpSocket;
 
+/// Entrypoint for tinycollectd async runtime.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get target from environment or use default

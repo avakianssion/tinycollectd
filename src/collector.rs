@@ -1,7 +1,6 @@
-use serde_json::{json, Value};
+//! Module to define behavior of sys info collection.
+use serde_json::{Value, json};
 use sysinfo::{Disks, Networks, System};
-
-/// Module to define behavior of sys info collection.
 
 /// Function to collect system metrics as single json object.
 pub fn get_sysinfo(mut sys: System) -> Value {
