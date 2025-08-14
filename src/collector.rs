@@ -72,8 +72,11 @@ fn get_disk_usage() -> Vec<Value> {
 
 /// Function to get S.M.A.R.T. status of all disks.
 fn get_smart_stats() -> Vec<Value> {
-    Disks::new_with_refreshed_list().iter().map(|disk| {
-        println!("{:?}", disk.name());
-        json!({})
-    }).collect()
+    Disks::new_with_refreshed_list()
+        .iter()
+        .map(|disk| {
+            println!("{:?}", disk.name());
+            json!({})
+        })
+        .collect()
 }
