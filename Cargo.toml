@@ -9,7 +9,7 @@ authors = [
 ]
 repository = "https://github.com/avakianssion/tinycollectd"
 readme = "README.md"
-license = "GPL-3.0-or-later"
+license = "MIT"
 keywords = [
   "metrics",
   "monitoring",
