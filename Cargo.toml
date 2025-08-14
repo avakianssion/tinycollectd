@@ -1,8 +1,7 @@
 [package]
 name = "collectdlite-rust"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.89.0"
+edition = "2024"g
 description = "Everything that collectd gives you but better!"
 
 
