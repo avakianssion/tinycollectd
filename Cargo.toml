@@ -3,7 +3,22 @@ name = "tinycollectd"
 version = "0.1.0"
 edition = "2024"
 description = "Everything that collectd gives you but better!"
-
+authors = [
+  "Nathanael G. Reese <nathanaelreese@acm.org>",
+  "Sion Avakian <avakianssion@gmail.com>"
+]
+repository = "https://github.com/avakianssion/tinycollectd"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+keywords = [
+  "metrics",
+  "monitoring",
+  "cli"
+]
+categories = [
+  "asynchronous",
+  "command-line-utilities",
+]
 
 [dependencies]
 sysinfo = "0.30"
