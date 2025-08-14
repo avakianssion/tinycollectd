@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
 
     loop {
-        let bytes = serde_json::to_vec(&collector::collect_sysinfo(System::new_all())).unwrap();
+        let bytes = serde_json::to_vec(&collector::get_sysinfo(System::new_all())).unwrap();
 
         // Send UDP packet
         if let Err(e) = socket.send_to(&bytes, &target).await {

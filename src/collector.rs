@@ -4,7 +4,7 @@ use sysinfo::{Disks, Networks, System};
 /// Module to define behavior of sys info collection.
 
 /// Function to collect system metrics as single json object.
-pub fn collect_sysinfo(mut sys: System) -> Value {
+pub fn get_sysinfo(mut sys: System) -> Value {
     sys.refresh_all();
 
     let timestamp = std::time::SystemTime::now()
@@ -23,13 +23,13 @@ pub fn collect_sysinfo(mut sys: System) -> Value {
         "hostname": hostname,
         "uptime": uptime,
         "cpu_freq_mhz": cpu_freq,
-        "disk_usage": collect_usage(),
-        "network": collect_net()
+        "disk_usage": get_disk_usage(),
+        "network": get_if_data()
     })
 }
 
-/// Function to get network data from system.
-fn collect_net() -> Vec<Value> {
+/// Function to get metrics from interfaces.
+fn get_if_data() -> Vec<Value> {
     let networks = Networks::new_with_refreshed_list();
 
     networks
@@ -44,8 +44,8 @@ fn collect_net() -> Vec<Value> {
         .collect()
 }
 
-/// Function to get disk usage data from system.
-fn collect_usage() -> Vec<Value> {
+/// Function to get disk usage information.
+fn get_disk_usage() -> Vec<Value> {
     let disks = Disks::new_with_refreshed_list();
 
     disks
