@@ -1,5 +1,5 @@
 // src/main.rs
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
 use sysinfo::{Disks, Networks, System};
 use tokio::net::UdpSocket;
