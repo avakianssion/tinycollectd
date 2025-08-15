@@ -21,9 +21,22 @@ jobs:
       - name: Unit Tests
         run: cargo test --verbose
 
+  miri:
+    name: Miri x64 Linux
+    runs-on: ubuntu-latest
+    env:
+      MIRIFLAGS: -Zmiri-strict-provenance
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@miri
+      - run: cargo miri setup
+      - run: cargo miri test --target x86_64-unknown-linux-gnu
+      - run: cargo miri test --target x86_64-unknown-linux-gnu --features preserve_order,float_roundtrip,arbitrary_precision,raw_value
+
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --release --verbose
