@@ -52,7 +52,7 @@ impl Collector {
 /// Function to collect system metrics as single json object.
 pub fn get_sysinfo(mut sys: System) -> Value {
     sys.refresh_all();
-    
+
     println!("{}", get_cpu_freq(&sys));
     println!("{}", get_disk_usage());
     println!("{}", get_if_data());
