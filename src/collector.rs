@@ -10,6 +10,16 @@ enum Category {
     Interface,
 }
 
+impl Category {
+    fn get_metrics(&self, sys: &System) -> String {
+        match self {
+            Category::CpuFreq => get_cpu_freq(&sys),
+            Category::DiskUsage => get_disk_usage(),
+            Category::Interface => get_if_data(),
+        }
+    }
+}
+
 /// Struct to define what system metrics to pull based on cli args.
 #[derive(Clone, Debug)]
 struct Collector {
@@ -42,33 +52,46 @@ impl Collector {
 /// Function to collect system metrics as single json object.
 pub fn get_sysinfo(mut sys: System) -> Value {
     sys.refresh_all();
-
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    let hostname = System::host_name()
-        .unwrap_or_else(|| "unknown".to_string())
-        .replace('"', "\\\"");
-    let uptime = System::uptime();
-    let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
+    
+    println!("{}", get_cpu_freq(&sys));
+    println!("{}", get_disk_usage());
+    println!("{}", get_if_data());
 
     json!({
-        "timestamp": timestamp,
-        "hostname": hostname,
-        "uptime": uptime,
-        "cpu_freq_mhz": cpu_freq,
+        "timestamp": get_timestamp(),
+        "hostname": get_hostname(),
+        "uptime": get_uptime(),
+        "cpu_freq": get_cpu_freq(&sys),
         "disk_usage": get_disk_usage(),
         "network": get_if_data()
     })
 }
 
+/// Function to get timestamp of poll.
+fn get_timestamp() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
+/// Function to get hostname of system.
+fn get_hostname() -> String {
+    System::host_name()
+        .unwrap_or_else(|| "unknown".to_string())
+        .replace('"', "\\\"")
+}
+
+/// Function to get current uptime of system.
+fn get_uptime() -> u64 {
+    System::uptime()
+}
+
 /// Function to get metrics from interfaces.
-fn get_if_data() -> Vec<Value> {
+fn get_if_data() -> String {
     let networks = Networks::new_with_refreshed_list();
 
-    networks
+    json!({"if": networks
         .iter()
         .map(|(name, data)| {
             json!({
@@ -77,14 +100,20 @@ fn get_if_data() -> Vec<Value> {
                 "tx_bytes": data.total_transmitted()
             })
         })
-        .collect()
+        .collect::<Vec<Value>>()})
+    .to_string()
+}
+
+/// Function to get cpu frequency information.
+fn get_cpu_freq(sys: &System) -> String {
+    json!({"cpu_freq": sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0)}).to_string()
 }
 
 /// Function to get disk usage information.
-fn get_disk_usage() -> Vec<Value> {
+fn get_disk_usage() -> String {
     let disks = Disks::new_with_refreshed_list();
 
-    disks
+    json!({"disk_usage": disks
         .iter()
         .map(|disk| {
             let total = disk.total_space();
@@ -103,5 +132,6 @@ fn get_disk_usage() -> Vec<Value> {
                 "used_percent": used_percent
             })
         })
-        .collect()
+        .collect::<Vec<Value>>()})
+    .to_string()
 }
