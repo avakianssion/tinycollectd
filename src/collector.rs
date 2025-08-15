@@ -2,6 +2,43 @@
 use serde_json::{Value, json};
 use sysinfo::{Disks, Networks, System};
 
+/// Enum to define categories of data to collect.
+#[derive(Copy, Clone, Debug)]
+enum Category {
+    CpuFreq,
+    DiskUsage,
+    Interface,
+}
+
+/// Struct to define what system metrics to pull based on cli args.
+#[derive(Clone, Debug)]
+struct Collector {
+    /// List of categories to pull.
+    categories: Vec<Category>,
+}
+
+impl Collector {
+    /// Constructor
+    fn new(categories: Vec<Category>) -> Self {
+        Self { categories }.clone()
+    }
+
+    /// Function that collects data.
+    pub fn collect(&self) -> Value {
+        json!({})
+    }
+
+    /// Function to enable collection of all categories.
+    fn all_categories() -> Self {
+        let categories = Vec::new();
+        Self::new(categories)
+    }
+
+    fn with_categories(categories: Vec<Category>) -> Self {
+        Self::new(categories)
+    }
+}
+
 /// Function to collect system metrics as single json object.
 pub fn get_sysinfo(mut sys: System) -> Value {
     sys.refresh_all();
