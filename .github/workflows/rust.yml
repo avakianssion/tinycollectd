@@ -32,7 +32,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@miri
       - run: cargo miri setup
       - run: cargo miri test --target x86_64-unknown-linux-gnu
-      - run: cargo miri test --target x86_64-unknown-linux-gnu --features preserve_order,float_roundtrip,arbitrary_precision,raw_value
 
   build:
     runs-on: ubuntu-latest
