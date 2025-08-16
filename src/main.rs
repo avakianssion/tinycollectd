@@ -1,11 +1,11 @@
 //! Main module for tinycollectd.
 mod collector;
+use clap::Parser;
 use std::time::Duration;
 use sysinfo::System;
 use tokio::net::UdpSocket;
-use clap::{Parser};
 #[derive(Parser)]
-struct Cli{
+struct Cli {
     /// send_host to send metrics to
     #[arg(long, default_value = "127.0.0.1")]
     send_host: Option<String>,
