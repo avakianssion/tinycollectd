@@ -15,6 +15,9 @@ struct Cli {
     /// metrics tinycollectd would collect
     #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
     metrics: Vec<MetricType>,
+    /// interval for data to be collected
+    #[arg(long, default_value = "10")]
+    collection_interval: u64,
 }
 #[derive(ValueEnum, Clone)]
 enum MetricType {
