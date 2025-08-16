@@ -25,7 +25,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Sending port: {}", send_port);
     }
     // Get target from environment or use default
-    let target = std::env::var("METRICS_TARGET").unwrap_or_else(|_| format!("{:?}:{:?}", cli.send_host,cli.send_port));
+    let target = std::env::var("METRICS_TARGET")
+        .unwrap_or_else(|_| format!("{:?}:{:?}", cli.send_host, cli.send_port));
 
     println!("Sending metrics to UDP {}", target);
 
