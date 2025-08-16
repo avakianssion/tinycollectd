@@ -26,3 +26,6 @@ As we work on this project, let's regularly revisit these fundamental questions:
 ---
 
 *These questions should guide our decision-making and help us maintain clarity of purpose throughout the development process.
+
+## Source
+The Heilmeier Catechism: [DARPA - The Heilmeier Catechism](https://www.darpa.mil/about/heilmeier-catechism)
