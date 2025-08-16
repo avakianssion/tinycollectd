@@ -3,10 +3,27 @@ mod collector;
 use std::time::Duration;
 use sysinfo::System;
 use tokio::net::UdpSocket;
+use clap::{Parser};
+#[derive(Parser)]
+struct Cli{
+    /// send_host to send metrics to
+    #[arg(long, default_value = "127.0.0.1")]
+    send_host: Option<String>,
+    /// send_port to send metrics to
+    #[arg(long, default_value = "1555")]
+    send_port: Option<u16>,
+}
 
 /// Entrypoint for tinycollectd async runtime.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
+    if let Some(send_host) = cli.send_host.as_deref() {
+        println!("Sending host: {}", send_host);
+    }
+    if let Some(send_port) = cli.send_port {
+        println!("Sending port: {}", send_port);
+    }
     // Get target from environment or use default
     let target = std::env::var("METRICS_TARGET").unwrap_or_else(|_| "127.0.0.1:1555".to_string());
 
