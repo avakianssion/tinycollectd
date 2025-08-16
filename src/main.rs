@@ -1,6 +1,6 @@
 //! Main module for tinycollectd.
 mod collector;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::time::Duration;
 use sysinfo::System;
 use tokio::net::UdpSocket;
@@ -12,6 +12,18 @@ struct Cli {
     /// send_port to send metrics to
     #[arg(long, default_value = "1555")]
     send_port: Option<u16>,
+    /// metrics tinyd would collectd
+    #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
+    metrics: Vec<MetricType>,
+}
+#[derive(ValueEnum, Clone)]
+enum MetricType {
+    All,
+    DiskUsage,
+    Network,
+    Cpufreq,
+    Uptime,
+    Service,
 }
 
 /// Entrypoint for tinycollectd async runtime.
@@ -34,6 +46,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
 
     loop {
+        // TODO: here, we should be calling the relevant functions in collector based on what was
+        // in the cli
         let bytes = serde_json::to_vec(&collector::get_sysinfo(System::new_all())).unwrap();
 
         // Send UDP packet
