@@ -4,11 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/tinyd --metrics All
+ExecStart=/usr/sbin/tinyd --metrics All
 Restart=on-failure
 RestartSec=5
-User=nobody
-Group=nogroup
+User=tinyd
+Group=wheel
 
 [Install]
 WantedBy=multi-user.target
