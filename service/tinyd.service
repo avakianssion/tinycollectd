@@ -1,0 +1,15 @@
+[Unit]
+Description=tinyd metrics collector
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/tinyd --metrics All
+Restart=on-failure
+RestartSec=5
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target
+
