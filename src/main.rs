@@ -43,8 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
 
     loop {
-        // TODO: here, we should be calling the relevant functions in collector based on what was
-        // in the cli
         let bytes = serde_json::to_vec(&collector::get_sysinfo(System::new_all())).unwrap();
 
         // Send UDP packet
