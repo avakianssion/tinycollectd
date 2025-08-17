@@ -28,8 +28,10 @@ enum MetricType {
     Uptime,
     Service,
 }
+/// Function to add hostname, timestamp, and other metadata to individual metrics
 
 /// Entrypoint for tinycollectd async runtime.
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
@@ -40,9 +42,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
+    // System object for collectors to share
+    let mut sys = System::new_all();
 
     loop {
-        let bytes = serde_json::to_vec(&collector::get_sysinfo(System::new_all())).unwrap();
+        sys.refresh_all(); // refresh once on every collection attempt
+        let bytes = serde_json::to_vec(&collector::get_sysinfo(&sys)).unwrap();
 
         // Send UDP packet
         if let Err(e) = socket.send_to(&bytes, &target).await {
