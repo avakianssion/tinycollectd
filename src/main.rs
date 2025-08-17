@@ -15,7 +15,7 @@ struct Cli {
     /// metrics tinycollectd would collect
     #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
     metrics: Vec<MetricType>,
-    /// interval for data to be collected
+    /// interval for data to be collected in seconds.
     #[arg(long, default_value = "10")]
     collection_interval: u64,
 }
