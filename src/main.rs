@@ -36,7 +36,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get target from environment or use default
     let target = format!("{}:{}", cli.send_host, cli.send_port);
-    println!("{}", target);
     println!("Sending metrics to UDP {}", target);
 
     // Create UDP socket
