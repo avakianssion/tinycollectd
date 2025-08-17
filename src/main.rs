@@ -1,17 +1,15 @@
 //! Main module for tinycollectd.
 mod collector;
 use clap::{Parser, ValueEnum};
+use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
 use tokio::net::UdpSocket;
 #[derive(Parser)]
 struct Cli {
-    /// send_host to send metrics to
-    #[arg(long, default_value = "127.0.0.1")]
-    send_host: String,
-    /// send_port to send metrics to
-    #[arg(long, default_value = "1555")]
-    send_port: String,
+    /// destination for metrics (e.g. 127.0.0.1:1555)
+    #[arg(long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 1555))]
+    destination: SocketAddrV4,
     /// metrics tinycollectd would collect
     #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
     metrics: Vec<MetricType>,
@@ -36,10 +34,6 @@ enum MetricType {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    // Get target from environment or use default
-    let target = format!("{}:{}", cli.send_host, cli.send_port);
-    println!("Sending metrics to UDP {}", target);
-
     // Create UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
     // System object for collectors to share
@@ -50,10 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let bytes = serde_json::to_vec(&collector::get_sysinfo(&sys)).unwrap();
 
         // Send UDP packet
-        if let Err(e) = socket.send_to(&bytes, &target).await {
+        if let Err(e) = socket.send_to(&bytes, cli.destination).await {
             eprintln!("Failed to send UDP packet: {}", e);
         } else {
-            println!("Sent metrics to {} ({} bytes)", target, &bytes.len());
+            println!(
+                "Sent metrics to {} ({} bytes)",
+                cli.destination,
+                &bytes.len()
+            );
         }
 
         tokio::time::sleep(Duration::from_secs(10)).await;
