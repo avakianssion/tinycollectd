@@ -1,9 +1,9 @@
 //! Main module for tinycollectd.
-mod collector;
 use clap::{Parser, ValueEnum};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
+use tinyd::collector;
 use tokio::net::UdpSocket;
 #[derive(Parser)]
 struct Cli {
