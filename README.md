@@ -19,18 +19,11 @@ These are the principles we follow to build better tooling:
 Usage: tinyd [OPTIONS]
 
 Options:
-      --send-host <SEND_HOST>
-          send_host to send metrics to [default: 127.0.0.1]
-
-      --send-port <SEND_PORT>
-          send_port to send metrics to [default: 1555]
-
+      --destination <DESTINATION>
+          destination for metrics (e.g. 127.0.0.1:1555) [default: 127.0.0.1:1555]
       --metrics <METRICS>
-          metrics tinycollectd will collect [default: all]
-          [possible values: all, disk-usage, network, cpufreq, uptime, service]
-
+          metrics tinycollectd would collect [default: All] [possible values: all, disk-usage, network, cpufreq, uptime, service]
       --collection-interval <COLLECTION_INTERVAL>
-          interval (seconds) for data collection [default: 10]
-
+          interval for data to be collected in seconds [default: 10]
   -h, --help
           Print help
