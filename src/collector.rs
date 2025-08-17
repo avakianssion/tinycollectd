@@ -14,21 +14,28 @@ pub fn get_sysinfo(mut sys: System) -> Value {
     let hostname = System::host_name()
         .unwrap_or_else(|| "unknown".to_string())
         .replace('"', "\\\"");
-    let uptime = System::uptime();
-    let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
 
     json!({
         "timestamp": timestamp,
         "hostname": hostname,
-        "uptime": uptime,
-        "cpu_freq_mhz": cpu_freq,
+        "uptime": get_uptime(),
+        "cpu_freq_mhz": get_cpu_freq(System::new_all()),
         "disk_usage": get_disk_usage(),
         "network": get_if_data()
     })
 }
-
+/// Function to get uptime.
+pub fn get_uptime() -> String {
+    let uptime = System::uptime().to_string();
+    uptime
+}
+/// Function to get cpufreq.
+pub fn get_cpu_freq(sys: System) -> String {
+    let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
+    cpu_freq.to_string()
+}
 /// Function to get metrics from interfaces.
-fn get_if_data() -> Vec<Value> {
+pub fn get_if_data() -> Vec<Value> {
     let networks = Networks::new_with_refreshed_list();
 
     networks
@@ -44,7 +51,7 @@ fn get_if_data() -> Vec<Value> {
 }
 
 /// Function to get disk usage information.
-fn get_disk_usage() -> Vec<Value> {
+pub fn get_disk_usage() -> Vec<Value> {
     let disks = Disks::new_with_refreshed_list();
 
     disks
