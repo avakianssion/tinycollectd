@@ -34,6 +34,7 @@ mod tests {
         assert!(freq_str.parse::<u64>().is_ok());
     }
 
+    #[cfg(not(miri))]
     #[test]
     fn test_get_if_data() {
         let interfaces = get_if_data();
@@ -48,6 +49,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(miri))]
     #[test]
     fn test_get_disk_usage() {
         let disks = get_disk_usage();
@@ -99,6 +101,7 @@ mod tests {
         assert!(!hostname.contains("\"") || hostname.contains("\\\""));
     }
 
+    #[cfg(not(miri))]
     #[test]
     fn test_network_data_types() {
         let interfaces = get_if_data();
