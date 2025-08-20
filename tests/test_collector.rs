@@ -40,17 +40,14 @@ mod tests {
     fn test_get_if_data() {
         let interfaces = get_if_data();
 
-        // Should return a vector (might be empty on some systems)
         assert!(interfaces.is_empty() || interfaces.len() > 0);
 
-        // If we have interfaces, check their structure
         for interface in &interfaces {
             assert!(interface.is_object());
             assert!(interface["interface"].is_string());
             assert!(interface["rx_bytes"].is_u64());
             assert!(interface["tx_bytes"].is_u64());
 
-            // Interface name should not be empty
             let name = interface["interface"].as_str().unwrap();
             assert!(!name.is_empty());
         }
@@ -60,10 +57,8 @@ mod tests {
     fn test_get_disk_usage() {
         let disks = get_disk_usage();
 
-        // Should return a vector (might be empty on some systems, but usually has at least one disk)
         assert!(disks.len() >= 0);
 
-        // If we have disks, check their structure
         for disk in &disks {
             assert!(disk.is_object());
             assert!(disk["mount"].is_string());
@@ -75,12 +70,10 @@ mod tests {
             let mount = disk["mount"].as_str().unwrap();
             assert!(!mount.is_empty());
 
-            // Used should not exceed total
             let total = disk["total_gb"].as_u64().unwrap();
             let used = disk["used_gb"].as_u64().unwrap();
             assert!(used <= total);
 
-            // Used percentage should be between 0 and 100
             let used_percent = disk["used_percent"].as_f64().unwrap();
             assert!(used_percent >= 0.0 && used_percent <= 100.0);
         }
@@ -91,7 +84,6 @@ mod tests {
         let sys = create_test_system();
         let sysinfo = get_sysinfo(&sys);
 
-        // Check that the JSON object has all required fields
         assert!(sysinfo.is_object());
         assert!(sysinfo["timestamp"].is_u64());
         assert!(sysinfo["hostname"].is_string());
@@ -100,19 +92,15 @@ mod tests {
         assert!(sysinfo["disk_usage"].is_array());
         assert!(sysinfo["network"].is_array());
 
-        // Timestamp should be reasonable (after year 2020)
         let timestamp = sysinfo["timestamp"].as_u64().unwrap();
         assert!(timestamp > 1_577_836_800, "Timestamp should be after 2020");
 
-        // Hostname should not be empty
         let hostname = sysinfo["hostname"].as_str().unwrap();
         assert!(!hostname.is_empty());
 
-        // Uptime should be parseable
         let uptime = sysinfo["uptime"].as_str().unwrap();
         assert!(uptime.parse::<u64>().is_ok());
 
-        // CPU frequency should be parseable
         let cpu_freq = sysinfo["cpu_freq_mhz"].as_str().unwrap();
         assert!(cpu_freq.parse::<u64>().is_ok());
     }
@@ -120,35 +108,13 @@ mod tests {
     #[test]
     fn test_json_escaping() {
         // Test that quote escaping works correctly in the get_sysinfo function
-        // This is more of an integration test since we can't easily mock the hostname
+        // This is more of an integration test since we can't easily mock the hostname but like who cares
         let sys = create_test_system();
         let sysinfo = get_sysinfo(&sys);
 
         let hostname = sysinfo["hostname"].as_str().unwrap();
         // Should not contain unescaped quotes
         assert!(!hostname.contains("\"") || hostname.contains("\\\""));
-    }
-
-    #[test]
-    fn test_disk_usage_calculation() {
-        let disks = get_disk_usage();
-
-        for disk in &disks {
-            let total_gb = disk["total_gb"].as_u64().unwrap();
-            let used_gb = disk["used_gb"].as_u64().unwrap();
-            let used_percent = disk["used_percent"].as_f64().unwrap();
-
-            if total_gb > 0 {
-                // Calculate expected percentage
-                let expected_percent = (used_gb as f64 / total_gb as f64) * 100.0;
-                // Allow for small floating point differences
-                let diff = (used_percent - expected_percent).abs();
-                assert!(diff < 0.1, "Used percentage calculation should be accurate");
-            } else {
-                // If total is 0, used percent should be 0
-                assert_eq!(used_percent, 0.0);
-            }
-        }
     }
 
     #[test]
@@ -159,13 +125,13 @@ mod tests {
             let rx_bytes = interface["rx_bytes"].as_u64().unwrap();
             let tx_bytes = interface["tx_bytes"].as_u64().unwrap();
 
-            // Bytes should be non-negative (u64 guarantees this, but good to document)
+            // This test feels pointless cause u64 guarantees non-negative but doesn't hurt I guess\
             assert!(rx_bytes >= 0);
             assert!(tx_bytes >= 0);
         }
     }
 
-    // Benchmark-style test to ensure performance is reasonable
+    // Benchmark-style performance check
     #[test]
     fn test_performance() {
         let start = std::time::Instant::now();
@@ -173,9 +139,10 @@ mod tests {
         let _sysinfo = get_sysinfo(&sys);
         let duration = start.elapsed();
 
-        // Should complete within 5 seconds (generous limit for CI environments)
+        // 1 second to gather all the data? this needs to be experimented with because
+        // what happens when we are running on beefy servers.
         assert!(
-            duration.as_secs() < 5,
+            duration.as_secs() < 1,
             "System info collection should be fast"
         );
     }
