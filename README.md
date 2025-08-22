@@ -12,3 +12,18 @@ These are the principles we follow to build better tooling:
 2. **Maturity** – Grow slow, get stable.
 3. **Minimal Config** – Flags over `.conf` whenever possible. Less editing, more running.
 4. **Minimal Use of Plugins** – Plugins are hard to manage. They have to be added very very carefully, if at all.
+
+## Usage
+
+```bash
+Usage: tinyd [OPTIONS]
+
+Options:
+      --destination <DESTINATION>
+          destination for metrics (e.g. 127.0.0.1:1555) [default: 127.0.0.1:1555]
+      --metrics <METRICS>
+          metrics tinycollectd would collect [default: All] [possible values: all, disk-usage, network, cpufreq, uptime, service]
+      --collection-interval <COLLECTION_INTERVAL>
+          interval for data to be collected in seconds [default: 10]
+  -h, --help
+          Print help

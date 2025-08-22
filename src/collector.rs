@@ -2,96 +2,48 @@
 use serde_json::{Value, json};
 use sysinfo::{Disks, Networks, System};
 
-/// Enum to define categories of data to collect.
-#[derive(Copy, Clone, Debug)]
-enum Category {
-    CpuFreq,
-    DiskUsage,
-    Interface,
+/// Function to get raw uptime.
+fn uptime_raw(sys: &System) -> String {
+    System::uptime().to_string()
 }
-
-impl Category {
-    fn get_metrics(&self, sys: &System) -> String {
-        match self {
-            Category::CpuFreq => get_cpu_freq(&sys),
-            Category::DiskUsage => get_disk_usage(),
-            Category::Interface => get_if_data(),
-        }
-    }
+/// Function to get raw cpufreq.
+fn cpu_freq_raw(sys: &System) -> String {
+    let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
+    cpu_freq.to_string()
 }
-
-/// Struct to define what system metrics to pull based on cli args.
-#[derive(Clone, Debug)]
-struct Collector {
-    /// List of categories to pull.
-    categories: Vec<Category>,
-}
-
-impl Collector {
-    /// Constructor
-    fn new(categories: Vec<Category>) -> Self {
-        Self { categories }.clone()
-    }
-
-    /// Function that collects data.
-    pub fn collect(&self) -> Value {
-        json!({})
-    }
-
-    /// Function to enable collection of all categories.
-    fn all_categories() -> Self {
-        let categories = Vec::new();
-        Self::new(categories)
-    }
-
-    fn with_categories(categories: Vec<Category>) -> Self {
-        Self::new(categories)
-    }
-}
-
 /// Function to collect system metrics as single json object.
-pub fn get_sysinfo(mut sys: System) -> Value {
-    sys.refresh_all();
+pub fn get_sysinfo(sys: &System) -> Value {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
-    println!("{}", get_cpu_freq(&sys));
-    println!("{}", get_disk_usage());
-    println!("{}", get_if_data());
+    let hostname = System::host_name()
+        .unwrap_or_else(|| "unknown".to_string())
+        .replace('"', "\\\"");
 
     json!({
-        "timestamp": get_timestamp(),
-        "hostname": get_hostname(),
-        "uptime": get_uptime(),
-        "cpu_freq": get_cpu_freq(&sys),
+        "timestamp": timestamp,
+        "hostname": hostname,
+        "uptime": uptime_raw(sys),
+        "cpu_freq_mhz": cpu_freq_raw(sys),
         "disk_usage": get_disk_usage(),
         "network": get_if_data()
     })
 }
-
-/// Function to get timestamp of poll.
-fn get_timestamp() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
+/// Function to get JSON formatted uptime.
+pub fn uptime_json(sys: &System) -> Value {
+    json!({"uptime": uptime_raw(sys)})
 }
-
-/// Function to get hostname of system.
-fn get_hostname() -> String {
-    System::host_name()
-        .unwrap_or_else(|| "unknown".to_string())
-        .replace('"', "\\\"")
+/// Function to get JSON formatted cpufreq.
+pub fn cpu_freq_json(sys: &System) -> Value {
+    json!({"cpu_freq_mhz": cpu_freq_raw(sys)})
 }
-
-/// Function to get current uptime of system.
-fn get_uptime() -> u64 {
-    System::uptime()
-}
-
 /// Function to get metrics from interfaces.
-fn get_if_data() -> String {
+pub fn get_if_data() -> Vec<Value> {
     let networks = Networks::new_with_refreshed_list();
 
-    json!({"if": networks
+    networks
         .iter()
         .map(|(name, data)| {
             json!({
@@ -100,20 +52,13 @@ fn get_if_data() -> String {
                 "tx_bytes": data.total_transmitted()
             })
         })
-        .collect::<Vec<Value>>()})
-    .to_string()
+        .collect()
 }
-
-/// Function to get cpu frequency information.
-fn get_cpu_freq(sys: &System) -> String {
-    json!({"cpu_freq": sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0)}).to_string()
-}
-
 /// Function to get disk usage information.
-fn get_disk_usage() -> String {
+pub fn get_disk_usage() -> Vec<Value> {
     let disks = Disks::new_with_refreshed_list();
 
-    json!({"disk_usage": disks
+    disks
         .iter()
         .map(|disk| {
             let total = disk.total_space();
@@ -132,6 +77,5 @@ fn get_disk_usage() -> String {
                 "used_percent": used_percent
             })
         })
-        .collect::<Vec<Value>>()})
-    .to_string()
+        .collect()
 }
