@@ -1,5 +1,6 @@
 //! Module to define behavior of sys info collection.
 use serde_json::{Value, json};
+use std::process::Command;
 use sysinfo::{Disks, Networks, System};
 
 /// Function to get raw uptime.
@@ -78,4 +79,36 @@ pub fn get_disk_usage() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+/// Function to get status of specific systemd services by name
+pub fn get_service_status(service_names: Vec<String>) -> Vec<Value> {
+    let mut results = Vec::new();
+
+    for service_name in service_names {
+        let status = get_service_active_status(&service_name);
+
+        let service_info = json!({
+            "service_name": service_name,
+            "status": status
+        });
+
+        results.push(service_info);
+    }
+
+    results
+}
+
+/// Get the active status of a service (active, inactive, failed, etc.)
+fn get_service_active_status(service_name: &str) -> String {
+    match Command::new("systemctl")
+        .args(&["is-active", service_name])
+        .output()
+    {
+        Ok(output) => str::from_utf8(&output.stdout)
+            .unwrap_or("unknown")
+            .trim()
+            .to_string(),
+        Err(_) => "error".to_string(),
+    }
 }
