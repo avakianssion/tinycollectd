@@ -1,4 +1,4 @@
-//! Main module for tinycollectd.
+//! Main module for tinyd.
 use clap::{Parser, ValueEnum};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
@@ -10,9 +10,12 @@ struct Cli {
     /// destination for metrics (e.g. 127.0.0.1:1555)
     #[arg(long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 1555))]
     destination: SocketAddrV4,
-    /// metrics tinycollectd would collect
+    /// metrics tinyd would collect
     #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
     metrics: Vec<MetricType>,
+    /// list of services to pull status
+    #[arg(long)]
+    services: Vec<String>,
     /// interval for data to be collected in seconds.
     #[arg(long, default_value = "10")]
     collection_interval: u64,
@@ -28,7 +31,7 @@ enum MetricType {
 }
 /// Function to add hostname, timestamp, and other metadata to individual metrics
 
-/// Entrypoint for tinycollectd async runtime.
+/// Entrypoint for tinyd async runtime.
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
