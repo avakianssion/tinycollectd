@@ -82,27 +82,27 @@ pub fn get_disk_usage() -> Vec<Value> {
 }
 
 /// Function to get status of specific systemd services by name
-pub fn get_service_status(service_names: Vec<String>) -> Vec<Value> {
+pub fn get_service_status(services: Vec<String>) -> Vec<Value> {
     let mut results = Vec::new();
 
-    for service_name in service_names {
-        let status = get_service_active_status(&service_name);
+    for service in services {
+        let status = get_service_active_status(&service);
 
-        let service_info = json!({
-            "service_name": service_name,
+        let service_status = json!({
+            "service_name": service,
             "status": status
         });
 
-        results.push(service_info);
+        results.push(service_status);
     }
 
     results
 }
 
 /// Get the active status of a service (active, inactive, failed, etc.)
-fn get_service_active_status(service_name: &str) -> String {
+fn get_service_active_status(service: &str) -> String {
     match Command::new("systemctl")
-        .args(&["is-active", service_name])
+        .args(&["is-active", service])
         .output()
     {
         Ok(output) => str::from_utf8(&output.stdout)
