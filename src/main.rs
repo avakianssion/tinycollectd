@@ -1,5 +1,6 @@
 //! Main module for tinyd.
 use clap::{Parser, ValueEnum};
+use serde_json::json;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
@@ -20,7 +21,7 @@ struct Cli {
     #[arg(long, default_value = "10")]
     collection_interval: u64,
 }
-#[derive(ValueEnum, Clone)]
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
 enum MetricType {
     All,
     DiskUsage,
@@ -44,16 +45,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         sys.refresh_all(); // refresh once on every collection attempt
-        let bytes = serde_json::to_vec(&collector::get_sysinfo(&sys)).unwrap();
+        let mut metrics: Vec<u8> = Vec::new(); // metrics vector to hold data to be sent
 
+        // Little state machine action, which I'm sure there is a better, more idiomatic way of doing this.
+        if cli.metrics.contains(&MetricType::All) {
+            metrics = serde_json::to_vec(&collector::get_sysinfo(&sys)).unwrap();
+        } else {
+            if cli.metrics.contains(&MetricType::Service) {
+                metrics.extend(
+                    serde_json::to_vec(&collector::get_service_status(&cli.services)).unwrap(),
+                );
+            } else if cli.metrics.contains(&MetricType::DiskUsage) {
+                metrics.extend(serde_json::to_vec(&collector::get_disk_usage()).unwrap());
+            } else if cli.metrics.contains(&MetricType::Network) {
+                metrics.extend(serde_json::to_vec(&collector::get_if_data()).unwrap());
+            } else if cli.metrics.contains(&MetricType::Cpufreq) {
+                metrics.extend(serde_json::to_vec(&collector::cpu_freq_json(&sys)).unwrap());
+            } else if cli.metrics.contains(&MetricType::Uptime) {
+                metrics.extend(serde_json::to_vec(&collector::uptime_json(&sys)).unwrap());
+            }
+        }
+        // This feels like it should be in the collector module, but I don't see a clean way of getting it in there
+        let combined = json!({
+            "timestamp": &collector::get_timestamp(),
+            "hostname": &collector::get_hostname(&sys),
+            "metrics": metrics,
+        });
+        let bytes = serde_json::to_vec(&combined).unwrap();
         // Send UDP packet
         if let Err(e) = socket.send_to(&bytes, cli.destination).await {
             eprintln!("Failed to send UDP packet: {}", e);
         } else {
             println!(
-                "Sent metrics to {} ({} bytes)",
+                "Sent metrics to {} ({} metrics)",
                 cli.destination,
-                &bytes.len()
+                &metrics.len()
             );
         }
 
