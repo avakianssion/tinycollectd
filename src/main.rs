@@ -1,6 +1,6 @@
 //! Main module for tinyd.
 use clap::{Parser, ValueEnum};
-use serde_json::json;
+use serde_json::{Value, json};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
@@ -45,44 +45,74 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         sys.refresh_all(); // refresh once on every collection attempt
-        let mut metrics: Vec<u8> = Vec::new(); // metrics vector to hold data to be sent
 
-        // Little state machine action, which I'm sure there is a better, more idiomatic way of doing this.
-        if cli.metrics.contains(&MetricType::All) {
-            metrics = serde_json::to_vec(&collector::get_sysinfo(&sys)).unwrap();
+        let metrics_value = if cli.metrics.contains(&MetricType::All) {
+            collector::get_sysinfo(&sys)
         } else {
+            let mut combined_object = serde_json::Map::new();
+            let mut combined_arrays = Vec::new();
+
             if cli.metrics.contains(&MetricType::Service) {
-                metrics.extend(
-                    serde_json::to_vec(&collector::get_service_status(&cli.services)).unwrap(),
-                );
-            } else if cli.metrics.contains(&MetricType::DiskUsage) {
-                metrics.extend(serde_json::to_vec(&collector::get_disk_usage()).unwrap());
-            } else if cli.metrics.contains(&MetricType::Network) {
-                metrics.extend(serde_json::to_vec(&collector::get_if_data()).unwrap());
-            } else if cli.metrics.contains(&MetricType::Cpufreq) {
-                metrics.extend(serde_json::to_vec(&collector::cpu_freq_json(&sys)).unwrap());
-            } else if cli.metrics.contains(&MetricType::Uptime) {
-                metrics.extend(serde_json::to_vec(&collector::uptime_json(&sys)).unwrap());
+                let service_data = collector::get_service_status(&cli.services);
+                combined_arrays.extend(service_data);
             }
-        }
-        // This feels like it should be in the collector module, but I don't see a clean way of getting it in there
+
+            if cli.metrics.contains(&MetricType::DiskUsage) {
+                let disk_data = collector::get_disk_usage();
+                combined_arrays.extend(disk_data);
+            }
+
+            if cli.metrics.contains(&MetricType::Network) {
+                let network_data = collector::get_if_data();
+                combined_arrays.extend(network_data);
+            }
+
+            if cli.metrics.contains(&MetricType::Cpufreq) {
+                let cpu_data = collector::cpu_freq_json(&sys);
+                if let Value::Object(map) = cpu_data {
+                    combined_object.extend(map);
+                }
+            }
+
+            if cli.metrics.contains(&MetricType::Uptime) {
+                let uptime_data = collector::uptime_json(&sys);
+                if let Value::Object(map) = uptime_data {
+                    combined_object.extend(map);
+                }
+            }
+
+            // Combine single values and arrays
+            if !combined_object.is_empty() && !combined_arrays.is_empty() {
+                combined_object.insert("array_data".to_string(), Value::Array(combined_arrays));
+                Value::Object(combined_object)
+            } else if !combined_object.is_empty() {
+                Value::Object(combined_object)
+            } else if !combined_arrays.is_empty() {
+                Value::Array(combined_arrays)
+            } else {
+                json!({})
+            }
+        };
+
         let combined = json!({
-            "timestamp": &collector::get_timestamp(),
-            "hostname": &collector::get_hostname(&sys),
-            "metrics": metrics,
+            "timestamp": collector::get_timestamp(),
+            "hostname": collector::get_hostname(&sys),
+            "metrics": metrics_value,
         });
+
         let bytes = serde_json::to_vec(&combined).unwrap();
+
         // Send UDP packet
         if let Err(e) = socket.send_to(&bytes, cli.destination).await {
             eprintln!("Failed to send UDP packet: {}", e);
         } else {
             println!(
-                "Sent metrics to {} ({} metrics)",
+                "Sent metrics to {} ({} bytes)",
                 cli.destination,
-                &metrics.len()
+                bytes.len()
             );
         }
 
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(cli.collection_interval)).await;
     }
 }
