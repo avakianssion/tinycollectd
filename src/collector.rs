@@ -1,5 +1,6 @@
 //! Module to define behavior of sys info collection.
 use serde_json::{Value, json};
+use std::process::Command;
 use sysinfo::{Disks, Networks, System};
 
 /// Function to get raw uptime.
@@ -11,20 +12,26 @@ fn cpu_freq_raw(sys: &System) -> String {
     let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
     cpu_freq.to_string()
 }
-/// Function to collect system metrics as single json object.
-pub fn get_sysinfo(sys: &System) -> Value {
-    let timestamp = std::time::SystemTime::now()
+
+/// Function to get timestamp
+pub fn get_timestamp() -> u64 {
+    std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_secs()
+}
 
-    let hostname = System::host_name()
+/// Function to get hostname
+pub fn get_hostname(sys: &System) -> String {
+    System::host_name()
         .unwrap_or_else(|| "unknown".to_string())
-        .replace('"', "\\\"");
-
+        .replace('"', "\\\"")
+}
+/// Function to collect system metrics as single json object.
+pub fn get_sysinfo(sys: &System) -> Value {
     json!({
-        "timestamp": timestamp,
-        "hostname": hostname,
+        "timestamp": get_timestamp(),
+        "hostname": get_hostname(sys),
         "uptime": uptime_raw(sys),
         "cpu_freq_mhz": cpu_freq_raw(sys),
         "disk_usage": get_disk_usage(),
@@ -78,4 +85,36 @@ pub fn get_disk_usage() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+/// Function to get status of specific systemd services by name
+pub fn get_service_status(services: &[String]) -> Vec<Value> {
+    let mut results = Vec::new();
+
+    for service in services {
+        let status = get_service_active_status(&service);
+
+        let service_status = json!({
+            "service_name": service,
+            "status": status
+        });
+
+        results.push(service_status);
+    }
+
+    results
+}
+
+/// Get the active status of a service
+fn get_service_active_status(service: &str) -> String {
+    match Command::new("systemctl")
+        .args(&["is-active", service])
+        .output()
+    {
+        Ok(output) => str::from_utf8(&output.stdout)
+            .unwrap_or("unknown")
+            .trim()
+            .to_string(),
+        Err(_) => "error".to_string(),
+    }
 }
