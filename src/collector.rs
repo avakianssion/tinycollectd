@@ -1,6 +1,9 @@
 //! Module to define behavior of sys info collection.
 use serde_json::{Value, json};
 use sysinfo::{Disks, Networks, System};
+use std::process::Command;
+use std::fs;
+use std::io;
 
 /// Function to get raw uptime.
 fn uptime_raw(sys: &System) -> String {
@@ -78,4 +81,69 @@ pub fn get_disk_usage() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+// Discover controllers
+pub fn list_nvme_controllers() -> io::Result<Vec<String>> {
+    let mut names = Vec::new();
+
+    // This dir contains entries like "nvme0", "nvme1", ...
+    let entries = match fs::read_dir("/sys/class/nvme") {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("No /sys/class/nvme found or not readable: {e}");
+            return Ok(names); // return empty list instead of hard error
+        }
+    };
+
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        names.push(name);
+    }
+
+    Ok(names)
+}
+
+/// Function to extract S.M.A.R.T metrics
+pub fn print_all_nvme_smart_logs() {
+    let controllers = match list_nvme_controllers() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to list NVMe controllers: {e}");
+            return;
+        }
+    };
+
+    if controllers.is_empty() {
+        println!("No NVMe controllers detected.");
+        return;
+    }
+
+    for ctrl in controllers {
+        let dev_path = format!("/dev/{ctrl}");
+        println!("NVMe SMART for {dev_path}");
+
+        let output = match Command::new("nvme")
+            .args(["smart-log", &dev_path, "-o", "json"])
+            .output()
+        {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("Failed to run nvme on {dev_path}: {e}");
+                continue;
+            }
+        };
+
+        if !output.status.success() {
+            eprintln!(
+                "nvme smart-log failed for {dev_path}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            continue;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        println!("{stdout}");
+    }
 }
