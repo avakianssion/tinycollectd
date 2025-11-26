@@ -1,9 +1,22 @@
 //! Module to define behavior of sys info collection.
 use serde_json::{Value, json};
+use serde::Serialize;
 use sysinfo::{Disks, Networks, System};
 use std::process::Command;
 use std::fs;
 use std::io;
+
+// Serialize smart log metrics
+#[derive(Debug, Serialize)]
+pub struct NvmesSmartLog {
+    pub nvme_name: String,      // tag the nvme_name
+    pub temperature: Option<u64>,
+    pub percentage_used: Option<u64>,
+    pub data_units_read: Option<u64>,
+    pub data_units_written: Option<u64>,
+    pub media_errors: Option<u64>,
+    pub raw_json: serde_json::Value, // Full raw json
+}
 
 /// Function to get raw uptime.
 fn uptime_raw(sys: &System) -> String {
@@ -14,20 +27,26 @@ fn cpu_freq_raw(sys: &System) -> String {
     let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
     cpu_freq.to_string()
 }
-/// Function to collect system metrics as single json object.
-pub fn get_sysinfo(sys: &System) -> Value {
-    let timestamp = std::time::SystemTime::now()
+
+/// Function to get timestamp
+pub fn get_timestamp() -> u64 {
+    std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_secs()
+}
 
-    let hostname = System::host_name()
+/// Function to get hostname
+pub fn get_hostname(sys: &System) -> String {
+    System::host_name()
         .unwrap_or_else(|| "unknown".to_string())
-        .replace('"', "\\\"");
-
+        .replace('"', "\\\"")
+}
+/// Function to collect system metrics as single json object.
+pub fn get_sysinfo(sys: &System) -> Value {
     json!({
-        "timestamp": timestamp,
-        "hostname": hostname,
+        "timestamp": get_timestamp(),
+        "hostname": get_hostname(sys),
         "uptime": uptime_raw(sys),
         "cpu_freq_mhz": cpu_freq_raw(sys),
         "disk_usage": get_disk_usage(),
@@ -83,67 +102,102 @@ pub fn get_disk_usage() -> Vec<Value> {
         .collect()
 }
 
-// Discover controllers
-pub fn list_nvme_controllers() -> io::Result<Vec<String>> {
-    let mut names = Vec::new();
+/// Function to get status of specific systemd services by name
+pub fn get_service_status(services: &[String]) -> Vec<Value> {
+    let mut results = Vec::new();
 
-    // This dir contains entries like "nvme0", "nvme1", ...
-    let entries = match fs::read_dir("/sys/class/nvme") {
-        Ok(e) => e,
-        Err(e) => {
-            eprintln!("No /sys/class/nvme found or not readable: {e}");
-            return Ok(names); // return empty list instead of hard error
-        }
-    };
+    for service in services {
+        let status = get_service_active_status(&service);
 
-    for entry in entries {
-        let entry = entry?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        names.push(name);
+        let service_status = json!({
+            "service_name": service,
+            "status": status
+        });
+
+        results.push(service_status);
     }
 
-    Ok(names)
+    results
+}
+
+/// Get the active status of a service
+fn get_service_active_status(service: &str) -> String {
+    match Command::new("systemctl")
+        .args(&["is-active", service])
+        .output()
+    {
+        Ok(output) => str::from_utf8(&output.stdout)
+            .unwrap_or("unknown")
+            .trim()
+            .to_string(),
+        Err(_) => "error".to_string(),
+    }
+}
+
+/// Function to discover controllers exposed on the server
+pub fn list_nvme_controllers() -> Vec<String> {
+    let mut names = Vec::new();
+
+    if let Ok(entries) = fs::read_dir("/sys/class/nvme") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            names.push(name);
+        }
+    }
+
+    names
 }
 
 /// Function to extract S.M.A.R.T metrics
-pub fn print_all_nvme_smart_logs() {
-    let controllers = match list_nvme_controllers() {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Failed to list NVMe controllers: {e}");
-            return;
-        }
-    };
+/// Eventually, I want the other events to be their own structs like this one
+pub fn collect_nvme_smart() -> Vec<NvmesSmartLog> {
+    let mut results = Vec::new();
+    let ctrls = list_nvme_controllers();
 
-    if controllers.is_empty() {
-        println!("No NVMe controllers detected.");
-        return;
-    }
-
-    for ctrl in controllers {
-        let dev_path = format!("/dev/{ctrl}");
-        println!("NVMe SMART for {dev_path}");
+    for ctrl in ctrls {
+        let path = format!("/dev/{ctrl}");
 
         let output = match Command::new("nvme")
-            .args(["smart-log", &dev_path, "-o", "json"])
+            .args(["smart-log", &path, "-o", "json"])
             .output()
         {
-            Ok(o) => o,
+            Ok(o) if o.status.success() => o,
+            Ok(o) => {
+                eprintln!(
+                    "nvme smart-log failed for {}: {}",
+                    path,
+                    String::from_utf8_lossy(&o.stderr)
+                );
+                continue;
+            }
             Err(e) => {
-                eprintln!("Failed to run nvme on {dev_path}: {e}");
+                eprintln!("Failed to run nvme on {path}: {e}");
                 continue;
             }
         };
 
-        if !output.status.success() {
-            eprintln!(
-                "nvme smart-log failed for {dev_path}: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            continue;
-        }
+        let raw_json: serde_json::Value =
+            match serde_json::from_slice(&output.stdout) {
+                Ok(j) => j,
+                Err(e) => {
+                    eprintln!("Failed to parse JSON for {}: {e}", path);
+                    continue;
+                }
+            };
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        println!("{stdout}");
+        // Extract common fields
+        let entry = NvmesSmartLog {
+            nvme_name: ctrl,
+            temperature: raw_json.get("temperature").and_then(|v| v.as_u64()),
+            percentage_used: raw_json.get("percentage_used").and_then(|v| v.as_u64()),
+            data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
+            data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
+            media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
+            raw_json,
+        };
+
+        results.push(entry);
     }
+
+    results
 }
