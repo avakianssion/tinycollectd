@@ -1,6 +1,6 @@
 //! Main module for tinyd.
 use clap::{Parser, ValueEnum};
-use serde_json::{Value, json};
+use serde_json::{Value, json, Map};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
@@ -38,60 +38,48 @@ enum MetricType {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    // Create UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    // System object for collectors to share
     let mut sys = System::new_all();
 
     loop {
-        sys.refresh_all(); // refresh once on every collection attempt
+        sys.refresh_all();
 
         let metrics_value = if cli.metrics.contains(&MetricType::All) {
             collector::get_sysinfo(&sys)
         } else {
-            let mut combined_object = serde_json::Map::new();
-            let mut combined_arrays = Vec::new();
+            let mut metrics_obj = Map::new();
 
             if cli.metrics.contains(&MetricType::SmartLog) {
-                let smart_log = collector::collect_smart_log();
-                combined_arrays.extend(smart_log);
+                let smart_log = collector::collect_smart_log(); // Vec<NvmesSmartLog>
+                let smart_val = serde_json::to_value(smart_log).unwrap_or_else(|_| json!([]));
+                metrics_obj.insert("smart_log".to_string(), smart_val);
             }
 
             if cli.metrics.contains(&MetricType::DiskUsage) {
-                let disk_data = collector::get_disk_usage();
-                combined_arrays.extend(disk_data);
+                let disk_data = collector::get_disk_usage(); // Vec<Value>
+                metrics_obj.insert("disk_usage".to_string(), Value::Array(disk_data));
             }
 
             if cli.metrics.contains(&MetricType::Network) {
-                let network_data = collector::get_if_data();
-                combined_arrays.extend(network_data);
+                let network_data = collector::get_if_data(); // Vec<Value>
+                metrics_obj.insert("network".to_string(), Value::Array(network_data));
             }
 
             if cli.metrics.contains(&MetricType::Cpufreq) {
                 let cpu_data = collector::cpu_freq_json(&sys);
                 if let Value::Object(map) = cpu_data {
-                    combined_object.extend(map);
+                    metrics_obj.insert("cpufreq".to_string(), Value::Object(map));
                 }
             }
 
             if cli.metrics.contains(&MetricType::Uptime) {
                 let uptime_data = collector::uptime_json(&sys);
                 if let Value::Object(map) = uptime_data {
-                    combined_object.extend(map);
+                    metrics_obj.insert("uptime".to_string(), Value::Object(map));
                 }
             }
 
-            // Combine single values and arrays
-            if !combined_object.is_empty() && !combined_arrays.is_empty() {
-                combined_object.insert("array_data".to_string(), Value::Array(combined_arrays));
-                Value::Object(combined_object)
-            } else if !combined_object.is_empty() {
-                Value::Object(combined_object)
-            } else if !combined_arrays.is_empty() {
-                Value::Array(combined_arrays)
-            } else {
-                json!({})
-            }
+            Value::Object(metrics_obj)
         };
 
         let combined = json!({
@@ -102,7 +90,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let bytes = serde_json::to_vec(&combined).unwrap();
 
-        // Send UDP packet
         if let Err(e) = socket.send_to(&bytes, cli.destination).await {
             eprintln!("Failed to send UDP packet: {}", e);
         } else {

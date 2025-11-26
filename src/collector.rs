@@ -150,7 +150,7 @@ pub fn list_nvme_controllers() -> Vec<String> {
 
 /// Function to extract S.M.A.R.T metrics
 /// Eventually, I want the other events to be their own structs like this one
-pub fn collect_nvme_smart() -> Vec<NvmesSmartLog> {
+pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
     let mut results = Vec::new();
     let ctrls = list_nvme_controllers();
 
