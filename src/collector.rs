@@ -1,15 +1,15 @@
 //! Module to define behavior of sys info collection.
-use serde_json::{Value, json};
 use serde::Serialize;
-use sysinfo::{Disks, Networks, System};
-use std::process::Command;
+use serde_json::{Value, json};
 use std::fs;
 use std::io;
+use std::process::Command;
+use sysinfo::{Disks, Networks, System};
 
 // Serialize smart log metrics
 #[derive(Debug, Serialize)]
 pub struct NvmesSmartLog {
-    pub nvme_name: String,      // tag the nvme_name
+    pub nvme_name: String, // tag the nvme_name
     pub temperature: Option<u64>,
     pub percentage_used: Option<u64>,
     pub data_units_read: Option<u64>,
@@ -176,14 +176,13 @@ pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
             }
         };
 
-        let raw_json: serde_json::Value =
-            match serde_json::from_slice(&output.stdout) {
-                Ok(j) => j,
-                Err(e) => {
-                    eprintln!("Failed to parse JSON for {}: {e}", path);
-                    continue;
-                }
-            };
+        let raw_json: serde_json::Value = match serde_json::from_slice(&output.stdout) {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("Failed to parse JSON for {}: {e}", path);
+                continue;
+            }
+        };
 
         // Extract common fields
         let entry = NvmesSmartLog {

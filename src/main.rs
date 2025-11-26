@@ -1,6 +1,6 @@
 //! Main module for tinyd.
 use clap::{Parser, ValueEnum};
-use serde_json::{Value, json, Map};
+use serde_json::{Map, Value, json};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
@@ -19,7 +19,7 @@ struct Cli {
     /// output mode (udp, stdout)
     #[arg(long, value_enum, default_value = "udp")]
     output: OutputMode,
-    
+
     /// destination for metrics (e.g. 127.0.0.1:1555)
     #[arg(long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 1555))]
     destination: SocketAddrV4,
@@ -99,7 +99,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         let bytes = serde_json::to_vec(&combined).unwrap();
-
 
         match cli.output {
             OutputMode::Udp => {
