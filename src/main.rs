@@ -6,8 +6,20 @@ use std::time::Duration;
 use sysinfo::System;
 use tinyd::collector;
 use tokio::net::UdpSocket;
+
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
+enum OutputMode {
+    Udp,
+    Stdout,
+    Both,
+}
+
 #[derive(Parser)]
 struct Cli {
+    /// output mode (udp, stdout)
+    #[arg(long, value_enum, default_value = "udp")]
+    output: OutputMode,
+    
     /// destination for metrics (e.g. 127.0.0.1:1555)
     #[arg(long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 1555))]
     destination: SocketAddrV4,
@@ -30,10 +42,8 @@ enum MetricType {
     Uptime,
     SmartLog,
 }
-/// Function to add hostname, timestamp, and other metadata to individual metrics
 
 /// Entrypoint for tinyd async runtime.
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
@@ -90,16 +100,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let bytes = serde_json::to_vec(&combined).unwrap();
 
-        if let Err(e) = socket.send_to(&bytes, cli.destination).await {
-            eprintln!("Failed to send UDP packet: {}", e);
-        } else {
-            println!(
-                "Sent metrics to {} ({} bytes)",
-                cli.destination,
-                bytes.len()
-            );
-        }
 
+        match cli.output {
+            OutputMode::Udp => {
+                if let Err(e) = socket.send_to(&bytes, cli.destination).await {
+                    eprintln!("Failed to send UDP packet: {}", e);
+                } else {
+                    println!(
+                        "Sent metrics to {} ({} bytes)",
+                        cli.destination,
+                        bytes.len()
+                    );
+                }
+            }
+            OutputMode::Stdout => {
+                println!("{}", serde_json::to_string_pretty(&combined).unwrap());
+            }
+            OutputMode::Both => {
+                // print
+                println!("{}", serde_json::to_string_pretty(&combined).unwrap());
+
+                // and send
+                if let Err(e) = socket.send_to(&bytes, cli.destination).await {
+                    eprintln!("Failed to send UDP packet: {}", e);
+                } else {
+                    println!(
+                        "Sent metrics to {} ({} bytes)",
+                        cli.destination,
+                        bytes.len()
+                    );
+                }
+            }
+        }
         tokio::time::sleep(Duration::from_secs(cli.collection_interval)).await;
     }
 }
