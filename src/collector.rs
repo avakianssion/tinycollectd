@@ -6,6 +6,7 @@ use std::io;
 use std::process::Command;
 use sysinfo::{Disks, Networks, System};
 
+// TODO - This struct is incomplete - There are other important things in smart info logs that I think we should keep
 // Serialize smart log metrics
 #[derive(Debug, Serialize)]
 pub struct NvmesSmartLog {
@@ -15,7 +16,8 @@ pub struct NvmesSmartLog {
     pub data_units_read: Option<u64>,
     pub data_units_written: Option<u64>,
     pub media_errors: Option<u64>,
-    pub raw_json: serde_json::Value, // Full raw json
+    pub avail_spare: Option<u64>,
+    pub raw_json: serde_json::Value, // Full raw json only for debugging
 }
 
 /// Function to get raw uptime.
@@ -192,6 +194,7 @@ pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
             data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
             data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
             media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
+            avail_spare: raw_json.get("avail_spare").and_then(|v| v.as_u64()),
             raw_json,
         };
 
