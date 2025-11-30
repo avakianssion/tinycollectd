@@ -69,7 +69,8 @@ pub fn get_sysinfo(sys: &System) -> Value {
         "uptime": uptime_raw(sys),
         "cpu_freq_mhz": cpu_freq_raw(sys),
         "disk_usage": get_disk_usage(),
-        "network": get_if_data()
+        "network": get_if_data(),
+        "smart_log": collect_smart_log(),
     })
 }
 /// Function to get JSON formatted uptime.
