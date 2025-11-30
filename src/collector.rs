@@ -11,13 +11,30 @@ use sysinfo::{Disks, Networks, System};
 #[derive(Debug, Serialize)]
 pub struct NvmesSmartLog {
     pub nvme_name: String, // tag the nvme_name
-    pub temperature: Option<u64>,
-    pub percentage_used: Option<u64>,
+    pub avail_spare: Option<u64>,
+    pub controller_busy_time: Option<u64>,
+    pub critical_comp_time: Option<u64>,
+    pub critical_warning: Option<u64>,
     pub data_units_read: Option<u64>,
     pub data_units_written: Option<u64>,
+    pub endurance_grp_critical_warning_summary: Option<u64>,
+    pub host_read_commands: Option<u64>,
+    pub host_write_commands: Option<u64>,
     pub media_errors: Option<u64>,
-    pub avail_spare: Option<u64>,
-    pub raw_json: serde_json::Value, // Full raw json only for debugging
+    pub num_err_log_entries: Option<u64>,
+    pub percent_used: Option<u64>,
+    pub power_cycles: Option<u64>,
+    pub power_on_hours: Option<u64>,
+    pub spare_thresh: Option<u64>,
+    pub temperature: Option<u64>,
+    pub temperature_sensor_1: Option<u64>,
+    pub temperature_sensor_2: Option<u64>,
+    pub thm_temp1_total_time: Option<u64>,
+    pub thm_temp1_trans_count: Option<u64>,
+    pub thm_temp2_total_time: Option<u64>,
+    pub thm_temp2_trans_count: Option<u64>,
+    pub unsafe_shutdowns: Option<u64>,
+    pub warning_temp_time: Option<u64>,
 }
 
 /// Function to get raw uptime.
@@ -189,13 +206,70 @@ pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
         // Extract common fields
         let entry = NvmesSmartLog {
             nvme_name: ctrl,
-            temperature: raw_json.get("temperature").and_then(|v| v.as_u64()),
-            percentage_used: raw_json.get("percentage_used").and_then(|v| v.as_u64()),
-            data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
-            data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
-            media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
+
             avail_spare: raw_json.get("avail_spare").and_then(|v| v.as_u64()),
-            raw_json,
+
+            controller_busy_time: raw_json
+                .get("controller_busy_time")
+                .and_then(|v| v.as_u64()),
+
+            critical_comp_time: raw_json.get("critical_comp_time").and_then(|v| v.as_u64()),
+
+            critical_warning: raw_json.get("critical_warning").and_then(|v| v.as_u64()),
+
+            data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
+
+            data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
+
+            endurance_grp_critical_warning_summary: raw_json
+                .get("endurance_grp_critical_warning_summary")
+                .and_then(|v| v.as_u64()),
+
+            host_read_commands: raw_json.get("host_read_commands").and_then(|v| v.as_u64()),
+
+            host_write_commands: raw_json.get("host_write_commands").and_then(|v| v.as_u64()),
+
+            media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
+
+            num_err_log_entries: raw_json.get("num_err_log_entries").and_then(|v| v.as_u64()),
+
+            percent_used: raw_json.get("percent_used").and_then(|v| v.as_u64()),
+
+            power_cycles: raw_json.get("power_cycles").and_then(|v| v.as_u64()),
+
+            power_on_hours: raw_json.get("power_on_hours").and_then(|v| v.as_u64()),
+
+            spare_thresh: raw_json.get("spare_thresh").and_then(|v| v.as_u64()),
+
+            temperature: raw_json.get("temperature").and_then(|v| v.as_u64()),
+
+            temperature_sensor_1: raw_json
+                .get("temperature_sensor_1")
+                .and_then(|v| v.as_u64()),
+
+            temperature_sensor_2: raw_json
+                .get("temperature_sensor_2")
+                .and_then(|v| v.as_u64()),
+
+            thm_temp1_total_time: raw_json
+                .get("thm_temp1_total_time")
+                .and_then(|v| v.as_u64()),
+
+            thm_temp1_trans_count: raw_json
+                .get("thm_temp1_trans_count")
+                .and_then(|v| v.as_u64()),
+
+            thm_temp2_total_time: raw_json
+                .get("thm_temp2_total_time")
+                .and_then(|v| v.as_u64()),
+
+            thm_temp2_trans_count: raw_json
+                .get("thm_temp2_trans_count")
+                .and_then(|v| v.as_u64()),
+
+            unsafe_shutdowns: raw_json.get("unsafe_shutdowns").and_then(|v| v.as_u64()),
+
+            warning_temp_time: raw_json.get("warning_temp_time").and_then(|v| v.as_u64()),
         };
 
         results.push(entry);
