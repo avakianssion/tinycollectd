@@ -1,16 +1,16 @@
-# tinycollectd
+# tinycollectd aka tinyd
 
 A lightweight Rust-based tool to collect system metrics (CPU, uptime, disk usage, network stats, and more...) and send them as JSON over UDP at regular intervals.
 
 This project was **inspired by [collectd](https://github.com/collectd/collectd)** — and born out of some frustrations while using it.  
 The goal is to provide a simpler, smaller, and more modern alternative that’s easy? easier to configure and extend, or maybe not and this would be another terrible metrics collector that people hate using.
 
-
 ## Tenets
 These are the principles we follow to build better tooling:
+
 1. **Simplicity** – One job. Done well. No bloat.
 2. **Maturity** – Grow slow, get stable.
-3. **Minimal Config** – Flags over `.conf` whenever possible. Less editing, more running.
+3. **Minimal Config** – Flags over `.conf` whenever possible.
 4. **Minimal Use of Plugins** – Plugins are hard to manage. They have to be added very very carefully, if at all.
 
 ## Usage
@@ -19,11 +19,16 @@ These are the principles we follow to build better tooling:
 Usage: tinyd [OPTIONS]
 
 Options:
+      --output <OUTPUT>
+          output mode (udp, stdout) [default: udp] [possible values: udp, stdout, both]
       --destination <DESTINATION>
           destination for metrics (e.g. 127.0.0.1:1555) [default: 127.0.0.1:1555]
       --metrics <METRICS>
-          metrics tinycollectd would collect [default: All] [possible values: all, disk-usage, network, cpufreq, uptime, service]
+          metrics tinyd would collect [default: All] [possible values: all, disk-usage, network, cpufreq, uptime, smart-log]
+      --services <SERVICES>
+          list of services to pull status
       --collection-interval <COLLECTION_INTERVAL>
           interval for data to be collected in seconds [default: 10]
   -h, --help
           Print help
+```
