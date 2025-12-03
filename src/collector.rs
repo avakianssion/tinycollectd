@@ -1,5 +1,5 @@
 //! Module to define behavior of sys info collection.
-use linux_nvme_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log};
+use linux_nvme_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log, nvme_id_ctrl};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::fs;
