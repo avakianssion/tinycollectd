@@ -6,6 +6,7 @@ This project was **inspired by [collectd](https://github.com/collectd/collectd)*
 The goal is to provide a simpler, smaller, and more modern alternative that’s easy? easier to configure and extend, or maybe not and this would be another terrible metrics collector that people hate using.
 
 ## Tenets
+
 These are the principles we follow to build better tooling:
 
 1. **Simplicity** – One job. Done well. No bloat.
