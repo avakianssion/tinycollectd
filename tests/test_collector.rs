@@ -1,4 +1,4 @@
-use tinyd::collector::*;
+use tinycollectd::collector::*;
 #[cfg(test)]
 mod tests {
     use super::*;

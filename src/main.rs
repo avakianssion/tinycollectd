@@ -1,10 +1,10 @@
-//! Main module for tinyd.
+//! Main module for tinycollectd.
 use clap::{Parser, ValueEnum};
 use serde_json::{Map, Value, json};
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::time::Duration;
 use sysinfo::System;
-use tinyd::collector;
+use tinycollectd::collector;
 use tokio::net::UdpSocket;
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]
@@ -23,7 +23,7 @@ struct Cli {
     /// destination for metrics (e.g. 127.0.0.1:1555)
     #[arg(long, default_value_t = SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 1555))]
     destination: SocketAddrV4,
-    /// metrics tinyd would collect
+    /// metrics tinycollectd would collect
     #[arg(long, value_enum, value_delimiter = ',', default_value = "All")]
     metrics: Vec<MetricType>,
     /// list of services to pull status
@@ -43,7 +43,6 @@ enum MetricType {
     SmartLog,
 }
 
-/// Entrypoint for tinyd async runtime.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
@@ -60,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut metrics_obj = Map::new();
 
             if cli.metrics.contains(&MetricType::SmartLog) {
-                let smart_log = collector::collect_smart_log(); // Vec<NvmesSmartLog>
+                let smart_log = collector::collect_smart_log();
                 let smart_val = serde_json::to_value(smart_log).unwrap_or_else(|_| json!([]));
                 metrics_obj.insert("smart_log".to_string(), smart_val);
             }
@@ -83,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if cli.metrics.contains(&MetricType::Uptime) {
-                let uptime_data = collector::uptime_json(&sys);
+                let uptime_data = collector::uptime_json();
                 if let Value::Object(map) = uptime_data {
                     metrics_obj.insert("uptime".to_string(), Value::Object(map));
                 }
@@ -94,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let combined = json!({
             "timestamp": collector::get_timestamp(),
-            "hostname": collector::get_hostname(&sys),
+            "hostname": collector::get_hostname(),
             "metrics": metrics_value,
         });
 

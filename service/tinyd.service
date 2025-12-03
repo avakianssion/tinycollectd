@@ -1,13 +1,13 @@
 [Unit]
-Description=tinyd metrics collector
+Description=tinycollectd metrics collector
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/tinyd --metrics All
+ExecStart=/usr/sbin/tinycollectd --metrics All
 Restart=on-failure
 RestartSec=5
-User=tinyd
+User=tinycollectd
 Group=wheel
 
 [Install]
