@@ -189,114 +189,115 @@ pub fn list_nvme_controllers() -> Vec<String> {
 
 /// Function to extract S.M.A.R.T metrics
 /// Eventually, I want the other events to be their own structs like this one
-pub fn manual_collect_smart_log() -> Vec<NvmesSmartLog> {
-    let mut results = Vec::new();
-    let ctrls = list_nvme_controllers();
+/// Deprecated
+// pub fn manual_collect_smart_log() -> Vec<NvmesSmartLog> {
+//     let mut results = Vec::new();
+//     let ctrls = list_nvme_controllers();
 
-    for ctrl in ctrls {
-        let path = format!("/dev/{ctrl}");
+//     for ctrl in ctrls {
+//         let path = format!("/dev/{ctrl}");
 
-        let output = match Command::new("nvme")
-            .args(["smart-log", &path, "-o", "json"])
-            .output()
-        {
-            Ok(o) if o.status.success() => o,
-            Ok(o) => {
-                eprintln!(
-                    "nvme smart-log failed for {}: {}",
-                    path,
-                    String::from_utf8_lossy(&o.stderr)
-                );
-                continue;
-            }
-            Err(e) => {
-                eprintln!("Failed to run nvme on {path}: {e}");
-                continue;
-            }
-        };
+//         let output = match Command::new("nvme")
+//             .args(["smart-log", &path, "-o", "json"])
+//             .output()
+//         {
+//             Ok(o) if o.status.success() => o,
+//             Ok(o) => {
+//                 eprintln!(
+//                     "nvme smart-log failed for {}: {}",
+//                     path,
+//                     String::from_utf8_lossy(&o.stderr)
+//                 );
+//                 continue;
+//             }
+//             Err(e) => {
+//                 eprintln!("Failed to run nvme on {path}: {e}");
+//                 continue;
+//             }
+//         };
 
-        let raw_json: serde_json::Value = match serde_json::from_slice(&output.stdout) {
-            Ok(j) => j,
-            Err(e) => {
-                eprintln!("Failed to parse JSON for {}: {e}", path);
-                continue;
-            }
-        };
+//         let raw_json: serde_json::Value = match serde_json::from_slice(&output.stdout) {
+//             Ok(j) => j,
+//             Err(e) => {
+//                 eprintln!("Failed to parse JSON for {}: {e}", path);
+//                 continue;
+//             }
+//         };
 
-        // Extract common fields
-        let entry = NvmesSmartLog {
-            nvme_name: ctrl,
+//         // Extract common fields
+//         let entry = NvmesSmartLog {
+//             nvme_name: ctrl,
 
-            avail_spare: raw_json.get("avail_spare").and_then(|v| v.as_u64()),
+//             avail_spare: raw_json.get("avail_spare").and_then(|v| v.as_u64()),
 
-            controller_busy_time: raw_json
-                .get("controller_busy_time")
-                .and_then(|v| v.as_u64()),
+//             controller_busy_time: raw_json
+//                 .get("controller_busy_time")
+//                 .and_then(|v| v.as_u64()),
 
-            critical_comp_time: raw_json.get("critical_comp_time").and_then(|v| v.as_u64()),
+//             critical_comp_time: raw_json.get("critical_comp_time").and_then(|v| v.as_u64()),
 
-            critical_warning: raw_json.get("critical_warning").and_then(|v| v.as_u64()),
+//             critical_warning: raw_json.get("critical_warning").and_then(|v| v.as_u64()),
 
-            data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
+//             data_units_read: raw_json.get("data_units_read").and_then(|v| v.as_u64()),
 
-            data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
+//             data_units_written: raw_json.get("data_units_written").and_then(|v| v.as_u64()),
 
-            endurance_grp_critical_warning_summary: raw_json
-                .get("endurance_grp_critical_warning_summary")
-                .and_then(|v| v.as_u64()),
+//             endurance_grp_critical_warning_summary: raw_json
+//                 .get("endurance_grp_critical_warning_summary")
+//                 .and_then(|v| v.as_u64()),
 
-            host_read_commands: raw_json.get("host_read_commands").and_then(|v| v.as_u64()),
+//             host_read_commands: raw_json.get("host_read_commands").and_then(|v| v.as_u64()),
 
-            host_write_commands: raw_json.get("host_write_commands").and_then(|v| v.as_u64()),
+//             host_write_commands: raw_json.get("host_write_commands").and_then(|v| v.as_u64()),
 
-            media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
+//             media_errors: raw_json.get("media_errors").and_then(|v| v.as_u64()),
 
-            num_err_log_entries: raw_json.get("num_err_log_entries").and_then(|v| v.as_u64()),
+//             num_err_log_entries: raw_json.get("num_err_log_entries").and_then(|v| v.as_u64()),
 
-            percent_used: raw_json.get("percent_used").and_then(|v| v.as_u64()),
+//             percent_used: raw_json.get("percent_used").and_then(|v| v.as_u64()),
 
-            power_cycles: raw_json.get("power_cycles").and_then(|v| v.as_u64()),
+//             power_cycles: raw_json.get("power_cycles").and_then(|v| v.as_u64()),
 
-            power_on_hours: raw_json.get("power_on_hours").and_then(|v| v.as_u64()),
+//             power_on_hours: raw_json.get("power_on_hours").and_then(|v| v.as_u64()),
 
-            spare_thresh: raw_json.get("spare_thresh").and_then(|v| v.as_u64()),
+//             spare_thresh: raw_json.get("spare_thresh").and_then(|v| v.as_u64()),
 
-            temperature: raw_json.get("temperature").and_then(|v| v.as_u64()),
+//             temperature: raw_json.get("temperature").and_then(|v| v.as_u64()),
 
-            temperature_sensor_1: raw_json
-                .get("temperature_sensor_1")
-                .and_then(|v| v.as_u64()),
+//             temperature_sensor_1: raw_json
+//                 .get("temperature_sensor_1")
+//                 .and_then(|v| v.as_u64()),
 
-            temperature_sensor_2: raw_json
-                .get("temperature_sensor_2")
-                .and_then(|v| v.as_u64()),
+//             temperature_sensor_2: raw_json
+//                 .get("temperature_sensor_2")
+//                 .and_then(|v| v.as_u64()),
 
-            thm_temp1_total_time: raw_json
-                .get("thm_temp1_total_time")
-                .and_then(|v| v.as_u64()),
+//             thm_temp1_total_time: raw_json
+//                 .get("thm_temp1_total_time")
+//                 .and_then(|v| v.as_u64()),
 
-            thm_temp1_trans_count: raw_json
-                .get("thm_temp1_trans_count")
-                .and_then(|v| v.as_u64()),
+//             thm_temp1_trans_count: raw_json
+//                 .get("thm_temp1_trans_count")
+//                 .and_then(|v| v.as_u64()),
 
-            thm_temp2_total_time: raw_json
-                .get("thm_temp2_total_time")
-                .and_then(|v| v.as_u64()),
+//             thm_temp2_total_time: raw_json
+//                 .get("thm_temp2_total_time")
+//                 .and_then(|v| v.as_u64()),
 
-            thm_temp2_trans_count: raw_json
-                .get("thm_temp2_trans_count")
-                .and_then(|v| v.as_u64()),
+//             thm_temp2_trans_count: raw_json
+//                 .get("thm_temp2_trans_count")
+//                 .and_then(|v| v.as_u64()),
 
-            unsafe_shutdowns: raw_json.get("unsafe_shutdowns").and_then(|v| v.as_u64()),
+//             unsafe_shutdowns: raw_json.get("unsafe_shutdowns").and_then(|v| v.as_u64()),
 
-            warning_temp_time: raw_json.get("warning_temp_time").and_then(|v| v.as_u64()),
-        };
+//             warning_temp_time: raw_json.get("warning_temp_time").and_then(|v| v.as_u64()),
+//         };
 
-        results.push(entry);
-    }
+//         results.push(entry);
+//     }
 
-    results
-}
+//     results
+// }
 
 /// Function to extract smart log through linux-nvme-sys crate
 fn smart_log_from_kernel(nvme_name: String, raw: &nvme_smart_log) -> NvmesSmartLog {
@@ -364,7 +365,7 @@ pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
 
     // NVMe spec:
     //   CDW10 bits:
-    //     [7:0]  = LID (log id)     -> 0x02 for SMART / health
+    //     [7:0]  = LID (log id) -> 0x02 for SMART / health
     //     [31:16] = NUMD (#dwords - 1)
     //
     // smart log is 512 bytes -> 512 / 4 = 128 dwords -> NUMD = 127
