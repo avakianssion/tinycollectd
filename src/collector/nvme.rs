@@ -1,14 +1,12 @@
-//! Module to define behavior of sys info collection.
+// src/collector/nvme.rs
+//! NVMe SMART collection via linux_nvme_sys.
+
 use linux_nvme_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log};
 use serde::Serialize;
-use serde_json::{Value, json};
-use std::fs;
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::unix::io::AsRawFd;
-use std::process::Command;
-use sysinfo::{Disks, Networks, System};
 
 // Serialize smart log metrics
 #[derive(Debug, Serialize)]
@@ -40,140 +38,17 @@ pub struct NvmesSmartLog {
     pub warning_temp_time: Option<u64>,
 }
 
-/// Helper function to convert a 16-byte little-endian NVMe counter into u64
+/// Function to convert a 16-byte little-endian NVMe counter into u64.
 fn le_16_to_u128(bytes: &[u8; 16]) -> u128 {
     u128::from_le_bytes(*bytes)
 }
 
-/// Helper function to convert a 32-bit little-endian NVMe counter into u64
+/// Function to convert a 32-bit little-endian NVMe counter into u64.
 fn le32_to_u64(v: linux_nvme_sys::__le32) -> u64 {
     u32::from(v) as u64
 }
 
-/// Function to get raw uptime.
-fn uptime_raw(_sys: &System) -> String {
-    System::uptime().to_string()
-}
-
-/// Function to get raw cpufreq.
-fn cpu_freq_raw(sys: &System) -> String {
-    let cpu_freq = sys.cpus().first().map(|cpu| cpu.frequency()).unwrap_or(0);
-    cpu_freq.to_string()
-}
-
-/// Function to get timestamp
-pub fn get_timestamp() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
-}
-
-/// Function to get hostname
-pub fn get_hostname(_sys: &System) -> String {
-    System::host_name()
-        .unwrap_or_else(|| "unknown".to_string())
-        .replace('"', "\\\"")
-}
-
-/// Function to collect system metrics as single json object.
-pub fn get_sysinfo(sys: &System) -> Value {
-    json!({
-        "timestamp": get_timestamp(),
-        "hostname": get_hostname(sys),
-        "uptime": uptime_raw(sys),
-        "cpu_freq_mhz": cpu_freq_raw(sys),
-        "disk_usage": get_disk_usage(),
-        "network": get_if_data(),
-        "smart_log": collect_smart_log(),
-    })
-}
-
-/// Function to get JSON formatted uptime.
-pub fn uptime_json(sys: &System) -> Value {
-    json!({"uptime": uptime_raw(sys)})
-}
-
-/// Function to get JSON formatted cpufreq.
-pub fn cpu_freq_json(sys: &System) -> Value {
-    json!({"cpu_freq_mhz": cpu_freq_raw(sys)})
-}
-
-/// Function to get metrics from interfaces.
-pub fn get_if_data() -> Vec<Value> {
-    let networks = Networks::new_with_refreshed_list();
-
-    networks
-        .iter()
-        .map(|(name, data)| {
-            json!({
-                "interface": name.replace('"', "\\\""),
-                "rx_bytes": data.total_received(),
-                "tx_bytes": data.total_transmitted()
-            })
-        })
-        .collect()
-}
-
-/// Function to get disk usage information.
-pub fn get_disk_usage() -> Vec<Value> {
-    let disks = Disks::new_with_refreshed_list();
-
-    disks
-        .iter()
-        .map(|disk| {
-            let total = disk.total_space();
-            let available = disk.available_space();
-            let used = total - available;
-            let used_percent = if total > 0 {
-                (used as f64 / total as f64) * 100.0
-            } else {
-                0.0
-            };
-
-            json!({
-                "mount": disk.mount_point().to_string_lossy().replace('"', "\\\""),
-                "total_gb": total / 1_000_000_000,
-                "used_gb": used / 1_000_000_000,
-                "used_percent": used_percent
-            })
-        })
-        .collect()
-}
-
-/// Function to get status of specific systemd services by name
-pub fn get_service_status(services: &[String]) -> Vec<Value> {
-    let mut results = Vec::new();
-
-    for service in services {
-        let status = get_service_active_status(&service);
-
-        let service_status = json!({
-            "service_name": service,
-            "status": status
-        });
-
-        results.push(service_status);
-    }
-
-    results
-}
-
-/// Get the active status of a service
-fn get_service_active_status(service: &str) -> String {
-    match Command::new("systemctl")
-        .args(&["is-active", service])
-        .output()
-    {
-        Ok(output) => str::from_utf8(&output.stdout)
-            .unwrap_or("unknown")
-            .trim()
-            .to_string(),
-        Err(_) => "error".to_string(),
-    }
-}
-
-/// Function to discover controllers exposed on the server
+/// Function to discover controllers exposed on the server.
 pub fn list_nvme_controllers() -> Vec<String> {
     let mut names = Vec::new();
 
@@ -299,7 +174,7 @@ pub fn list_nvme_controllers() -> Vec<String> {
 //     results
 // }
 
-/// Function to extract smart log through linux-nvme-sys crate
+/// Function to extract smart log through linux-nvme-sys crate.
 fn smart_log_from_kernel(nvme_name: String, raw: &nvme_smart_log) -> NvmesSmartLog {
     // temp is 2 bytes, just join as u16?
     let temp = u16::from_le_bytes([raw.temperature[0], raw.temperature[1]]) as u64;
@@ -349,7 +224,7 @@ fn smart_log_from_kernel(nvme_name: String, raw: &nvme_smart_log) -> NvmesSmartL
     }
 }
 
-/// Get the raw nvme_smart_log from a controller device, e.g. "/dev/nvme0"
+/// Function to extract raw nvme_smart_log from a controller.
 pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
     let file = OpenOptions::new()
         .read(true)
@@ -394,7 +269,7 @@ pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
     }
 }
 
-/// Function to collect extracted smart log data
+/// Function to collect extracted smart log data.
 pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
     let mut results = Vec::new();
     let ctrls = list_nvme_controllers();
@@ -412,6 +287,5 @@ pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
             }
         }
     }
-
     results
 }
