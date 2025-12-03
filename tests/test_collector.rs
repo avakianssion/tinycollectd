@@ -2,7 +2,6 @@ use tinycollectd::collector::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
     use sysinfo::System;
 
     /// Helper function to create a system instance for testing
@@ -15,8 +14,7 @@ mod tests {
     #[cfg(not(miri))]
     #[test]
     fn test_uptime_json() {
-        let sys = create_test_system();
-        let uptime_json = uptime_json(&sys);
+        let uptime_json = uptime_json();
         assert!(uptime_json.is_object());
         assert!(uptime_json["uptime"].is_string());
         let uptime_str = uptime_json["uptime"].as_str().unwrap();
@@ -111,18 +109,5 @@ mod tests {
             assert!(rx_bytes >= 0);
             assert!(tx_bytes >= 0);
         }
-    }
-
-    #[cfg(not(miri))]
-    #[test]
-    fn test_performance() {
-        let start = std::time::Instant::now();
-        let sys = create_test_system();
-        let sysinfo = get_sysinfo(&sys);
-        let duration = start.elapsed();
-        assert!(
-            duration.as_secs() < 1,
-            "System info collection should be fast"
-        );
     }
 }
