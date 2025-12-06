@@ -11,7 +11,7 @@ use std::os::unix::io::AsRawFd;
 // Serialize smart log metrics
 #[derive(Debug, Serialize)]
 pub struct NvmesSmartLog {
-    pub nvme_name: String, // tag the nvme_name
+    pub nvme_name: String, // tag the device name
     pub avail_spare: Option<u64>,
     pub controller_busy_time: Option<u64>,
     pub critical_comp_time: Option<u64>,
@@ -38,14 +38,42 @@ pub struct NvmesSmartLog {
     pub warning_temp_time: Option<u64>,
 }
 
-/// Function to convert a 16-byte little-endian NVMe counter into u64.
-fn le_16_to_u128(bytes: &[u8; 16]) -> u128 {
-    u128::from_le_bytes(*bytes)
-}
-
-/// Function to convert a 32-bit little-endian NVMe counter into u64.
-fn le32_to_u64(v: linux_nvme_sys::__le32) -> u64 {
-    u32::from(v) as u64
+// Constructor for NvmesSmartLog
+impl NvmesSmartLog {
+    pub fn new(nvme_name: String, smart_log: &nvme_smart_log) -> Self {
+        // TODO - we would likely want to add some validation here to make
+        // sure each value is returning a value?
+        Self {
+            nvme_name,
+            avail_spare: Some(smart_log.avail_spare as u64),
+            controller_busy_time: Some(u128::from_le_bytes(smart_log.ctrl_busy_time) as u64),
+            critical_comp_time: Some(u32::from(smart_log.critical_comp_time) as u64),
+            critical_warning: Some(smart_log.critical_warning as u64),
+            data_units_read: Some(u128::from_le_bytes(smart_log.data_units_read) as u64),
+            data_units_written: Some(u128::from_le_bytes(smart_log.data_units_written) as u64),
+            endurance_grp_critical_warning_summary: None,
+            host_read_commands: Some(u128::from_le_bytes(smart_log.host_reads) as u64),
+            host_write_commands: Some(u128::from_le_bytes(smart_log.host_writes) as u64),
+            media_errors: Some(u128::from_le_bytes(smart_log.media_errors) as u64),
+            num_err_log_entries: Some(u128::from_le_bytes(smart_log.num_err_log_entries) as u64),
+            percent_used: Some(smart_log.percent_used as u64),
+            power_cycles: Some(u128::from_le_bytes(smart_log.power_cycles) as u64),
+            power_on_hours: Some(u128::from_le_bytes(smart_log.power_on_hours) as u64),
+            spare_thresh: Some(smart_log.spare_thresh as u64),
+            temperature: Some(u16::from_le_bytes([
+                smart_log.temperature[0],
+                smart_log.temperature[1],
+            ]) as u64),
+            temperature_sensor_1: Some(u16::from(smart_log.temp_sensor[0]) as u64),
+            temperature_sensor_2: Some(u16::from(smart_log.temp_sensor[1]) as u64),
+            thm_temp1_total_time: Some(u32::from(smart_log.thm_temp1_total_time) as u64),
+            thm_temp1_trans_count: Some(u32::from(smart_log.thm_temp1_trans_count) as u64),
+            thm_temp2_total_time: Some(u32::from(smart_log.thm_temp2_total_time) as u64),
+            thm_temp2_trans_count: Some(u32::from(smart_log.thm_temp2_trans_count) as u64),
+            unsafe_shutdowns: Some(u128::from_le_bytes(smart_log.unsafe_shutdowns) as u64),
+            warning_temp_time: Some(u32::from(smart_log.warning_temp_time) as u64),
+        }
+    }
 }
 
 /// Function to discover controllers exposed on the server.
@@ -60,56 +88,6 @@ pub fn list_nvme_controllers() -> Vec<String> {
     }
 
     names
-}
-
-/// Function to extract smart log through linux-nvme-sys crate.
-fn smart_log_from_kernel(nvme_name: String, raw: &nvme_smart_log) -> NvmesSmartLog {
-    // temp is 2 bytes, just join as u16?
-    let temp = u16::from_le_bytes([raw.temperature[0], raw.temperature[1]]) as u64;
-
-    // first two temp sensors from temp_sensor[]
-    let ts1 = u16::from(raw.temp_sensor[0]) as u64;
-    let ts2 = u16::from(raw.temp_sensor[1]) as u64;
-
-    // 128-bit counters
-    let data_units_read = le_16_to_u128(&raw.data_units_read) as u64;
-    let data_units_written = le_16_to_u128(&raw.data_units_written) as u64;
-    let host_reads = le_16_to_u128(&raw.host_reads) as u64;
-    let host_writes = le_16_to_u128(&raw.host_writes) as u64;
-    let ctrl_busy_time = le_16_to_u128(&raw.ctrl_busy_time) as u64;
-    let power_cycles = le_16_to_u128(&raw.power_cycles) as u64;
-    let power_on_hours = le_16_to_u128(&raw.power_on_hours) as u64;
-    let unsafe_shutdowns = le_16_to_u128(&raw.unsafe_shutdowns) as u64;
-    let media_errors = le_16_to_u128(&raw.media_errors) as u64;
-    let num_err_log_entries = le_16_to_u128(&raw.num_err_log_entries) as u64;
-
-    NvmesSmartLog {
-        nvme_name,
-        avail_spare: Some(raw.avail_spare as u64),
-        controller_busy_time: Some(ctrl_busy_time),
-        critical_comp_time: Some(le32_to_u64(raw.critical_comp_time)),
-        critical_warning: Some(raw.critical_warning as u64),
-        data_units_read: Some(data_units_read),
-        data_units_written: Some(data_units_written),
-        endurance_grp_critical_warning_summary: None, // not exposed through the create?
-        host_read_commands: Some(host_reads),
-        host_write_commands: Some(host_writes),
-        media_errors: Some(media_errors),
-        num_err_log_entries: Some(num_err_log_entries),
-        percent_used: Some(raw.percent_used as u64),
-        power_cycles: Some(power_cycles),
-        power_on_hours: Some(power_on_hours),
-        spare_thresh: Some(raw.spare_thresh as u64),
-        temperature: Some(temp),
-        temperature_sensor_1: Some(ts1),
-        temperature_sensor_2: Some(ts2),
-        thm_temp1_total_time: Some(le32_to_u64(raw.thm_temp1_total_time)),
-        thm_temp1_trans_count: Some(le32_to_u64(raw.thm_temp1_trans_count)),
-        thm_temp2_total_time: Some(le32_to_u64(raw.thm_temp2_total_time)),
-        thm_temp2_trans_count: Some(le32_to_u64(raw.thm_temp2_trans_count)),
-        unsafe_shutdowns: Some(unsafe_shutdowns),
-        warning_temp_time: Some(le32_to_u64(raw.warning_temp_time)),
-    }
 }
 
 /// Function to extract raw nvme_smart_log from a controller.
@@ -167,7 +145,7 @@ pub fn collect_smart_log() -> Vec<NvmesSmartLog> {
 
         match get_nvme_smart_log_raw(&dev_path) {
             Ok(raw) => {
-                let mapped = smart_log_from_kernel(ctrl.clone(), &raw);
+                let mapped = NvmesSmartLog::new(ctrl.clone(), &raw);
                 results.push(mapped);
             }
             Err(e) => {
