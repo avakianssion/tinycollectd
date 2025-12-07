@@ -182,7 +182,7 @@ impl NvmesSmartLog {
             // Warning Summary) as a separate field. Instead, it's lumped into the rsvd6 reserved
             // byte array. According to the NVMe spec, byte 06 is the endurance group warning field,
             // which corresponds to rsvd6[0].
-            endurance_grp_critical_warning_summary: Some(raw.rsvd6[0] as u64),            
+            endurance_grp_critical_warning_summary: Some(raw.rsvd6[0] as u64),
             data_units_read: Some(u128::from_le_bytes(raw.data_units_read) as u64),
             data_units_written: Some(u128::from_le_bytes(raw.data_units_written) as u64),
             host_read_commands: Some(u128::from_le_bytes(raw.host_reads) as u64),
