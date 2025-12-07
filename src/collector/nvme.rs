@@ -196,7 +196,7 @@ impl NvmesSmartLog {
             warning_temp_time: Some(u32::from(raw.warning_temp_time) as u64),
             critical_comp_time: Some(u32::from(raw.critical_comp_time) as u64),
 
-            // All 8 temperature sensors
+            // All 8 temperature sensors covered in the specs
             temperature_sensor_1: Some(u16::from(raw.temp_sensor[0]) as u64),
             temperature_sensor_2: Some(u16::from(raw.temp_sensor[1]) as u64),
             temperature_sensor_3: Some(u16::from(raw.temp_sensor[2]) as u64),
