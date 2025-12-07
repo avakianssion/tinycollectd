@@ -93,7 +93,7 @@ pub struct NvmesSmartLog {
     pub unsafe_shutdowns: Option<u64>,
 
     /// Media and Data Integrity Errors (Bytes 175:160):
-    /// Number of occurrences where controller detected unrecovered data integrity error
+    /// Number of occurrences where controller detected un-recovered data integrity error
     /// Includes uncorrectable ECC, CRC checksum failure, LBA tag mismatch
     pub media_errors: Option<u64>,
 
@@ -178,7 +178,11 @@ impl NvmesSmartLog {
             avail_spare: Some(raw.avail_spare as u64),
             spare_thresh: Some(raw.spare_thresh as u64),
             percent_used: Some(raw.percent_used as u64),
-            endurance_grp_critical_warning_summary: None, // Check if this exists in raw
+            // NOTE: The linux_nvme_sys crate does not expose byte 06 (Endurance Group Critical
+            // Warning Summary) as a separate field. Instead, it's lumped into the rsvd6 reserved
+            // byte array. According to the NVMe spec, byte 06 is the endurance group warning field,
+            // which corresponds to rsvd6[0].
+            endurance_grp_critical_warning_summary: Some(raw.rsvd6[0] as u64),            
             data_units_read: Some(u128::from_le_bytes(raw.data_units_read) as u64),
             data_units_written: Some(u128::from_le_bytes(raw.data_units_written) as u64),
             host_read_commands: Some(u128::from_le_bytes(raw.host_reads) as u64),
