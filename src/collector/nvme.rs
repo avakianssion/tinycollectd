@@ -249,13 +249,6 @@ pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
     // log_len is the size we allocate
     let log_len = size_of::<nvme_smart_log>() as u32;
 
-    // NVMe spec:
-    //   CDW10 bits:
-    //     [7:0]  = LID (log id) -> 0x02 for SMART / health
-    //     [31:16] = NUMD (#dwords - 1)
-    //
-    // smart log is 512 bytes -> 512 / 4 = 128 dwords -> NUMD = 127
-
     // From NVMe Base Specification Document:
     // This log page is used to provide SMART and general health information. The information provided is over
     // the life of the controller and is retained across power cycles unless otherwise specified
@@ -266,7 +259,7 @@ pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
 
     let mut cmd: nvme_admin_cmd = unsafe { zeroed() };
     cmd.opcode = nvme_admin_get_log_page as u8;
-    // if a namespace identifier other than 0h or FFFFFFFFh is specified by the host,
+    // If a namespace identifier other than 0h or FFFFFFFFh is specified by the host,
     // then the controller shall abort the command with a status code of Invalid Field in Command;
     cmd.nsid = 0xFFFF_FFFF;
     cmd.addr = log_ptr;
