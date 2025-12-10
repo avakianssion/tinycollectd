@@ -13,7 +13,7 @@ pub struct NvmesSmartLog {
     /// NVMe device name (e.g., "nvme0")
     /// Potential issue - we use u64 for all values in the struct.
     /// If a drive runs long enough or has crazy write workload, the 128-bit SMART counters might
-    /// exceed 2^64-1 so we would likely end up truncating data. 
+    /// exceed 2^64-1 so we would likely end up truncating data.
     /// TODO - consider changing u64 to u128.
     pub nvme_name: String,
 
