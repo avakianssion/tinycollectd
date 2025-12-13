@@ -1,4 +1,4 @@
-# Notes on how to organzie id ctrl struct. 
+# Notes on how to organzie id ctrl struct
 
 It makes sense to break out this massive struct into smaller chunks for ease of use.
 Building out a massive struct like this in application layer will be pointless and 
@@ -6,7 +6,7 @@ expensive.
 
 The massive sruct defined in the FFI is this:
 
-`
+```rust
 pub struct nvme_id_ctrl {
     pub vid: __le16,
     pub ssvid: __le16,
@@ -103,11 +103,13 @@ pub struct nvme_id_ctrl {
     pub psd: [nvme_id_power_state; 32usize],
     pub vs: [__u8; 1024usize],
 }
-`
 
-## Tentetive organization schema: 
+```
 
-`
+## Tentetive organization schema
+
+```rust
+
 #[derive(Serialize)]
 pub struct CtrlIdentity {
   nvme_name: String,          // "nvme0"
@@ -168,5 +170,5 @@ pub struct CtrlThermals {
   mntmt_k: u16,
   mxtmt_k: u16,
 }
-`
 
+```
