@@ -1,12 +1,333 @@
 // src/collector/nvme.rs
 //! NVMe SMART collection via linux_nvme_sys.
 
-use nvme_cli_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log};
+use nvme_cli_sys::{
+    nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page,
+    nvme_admin_opcode::nvme_admin_identify, nvme_id_ctrl, nvme_smart_log,nvme_id_power_state
+};
 use serde::Serialize;
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::unix::io::AsRawFd;
+
+#[derive(Debug, Serialize)]
+pub struct NvmesIdCtrl {
+    /// NVMe device name (e.g., "nvme0")
+    pub nvme_name: String,
+
+    /// PCI Vendor ID of the controller.
+    pub vid: u16,
+
+    /// PCI Subsystem Vendor ID.
+    pub ssvid: u16,
+
+    /// Serial Number (ASCII, space padded).
+    pub sn: String,
+
+    /// Model Number (ASCII, space padded).
+    pub mn: String,
+
+    /// Firmware Revision (ASCII, space padded).
+    pub fr: String,
+
+    /// Recommended Arbitration Burst.
+    /// Hint to host for arbitration burst size when using weighted round-robin arbitration.
+    pub rab: u8,
+
+    /// IEEE OUI Identifier (3 bytes) for the vendor (Organizationally Unique Identifier).
+    pub ieee: [u8; 3],
+
+    /// Controller Multi-Path I/O and Namespace Sharing Capabilities (bitfield).
+    /// Indicates multipath / shared namespaces capabilities.
+    pub cmic: u8,
+
+    /// Maximum Data Transfer Size (MDTS).
+    /// Expressed as a power-of-two multiple of the minimum memory page size (MPSMIN).
+    /// Effective max transfer = (2^mdts) * (minimum page size).
+    pub mdts: u8,
+
+    /// Controller ID (CNTLID) assigned by the controller.
+    pub cntlid: u16,
+
+    /// Version (VER) of the NVMe specification the controller complies with.
+    pub ver: u32,
+
+    /// RTD3 Resume Latency (microseconds).
+    pub rtd3r_us: u32,
+
+    /// RTD3 Entry Latency (microseconds).
+    pub rtd3e_us: u32,
+
+    /// Optional Asynchronous Events Supported (bitfield).
+    pub oaes: u32,
+
+    /// Controller Attributes (bitfield).
+    pub ctratt: u32,
+
+    /// Read Recovery Levels Supported (bitfield / encoded).
+    pub rrls: u16,
+
+    /// Controller Type (encoded).
+    pub cntrltype: u8,
+
+    /// FRU GUID / Field Replaceable Unit GUID.
+    pub fguid: [u8; 16],
+
+    /// Command Retry Delay Time 1.
+    pub crdt1: u16,
+
+    /// Command Retry Delay Time 2.
+    pub crdt2: u16,
+
+    /// Command Retry Delay Time 3.
+    pub crdt3: u16,
+
+    /// NVM Subsystem Report (bitfield/encoded).
+    pub nvmsr: u8,
+
+    /// VPD Write Cycle Information (bitfield/encoded).
+    pub vwci: u8,
+
+    /// Management Endpoint Capabilities (bitfield/encoded).
+    pub mec: u8,
+
+    /// Optional Admin Command Support (bitfield).
+    pub oacs: u16,
+
+    /// Abort Command Limit.
+    pub acl: u8,
+
+    /// Asynchronous Event Request Limit.
+    pub aerl: u8,
+
+    /// Firmware Updates (bitfield).
+    pub frmw: u8,
+
+    /// Log Page Attributes (bitfield).
+    pub lpa: u8,
+
+    /// Error Log Page Entries (0-based).
+    pub elpe: u8,
+
+    /// Number of Power States Supported minus 1.
+    pub npss: u8,
+
+    /// Admin Vendor Specific Command Configuration.
+    pub avscc: u8,
+
+    /// Autonomous Power State Transition Attributes.
+    pub apsta: u8,
+
+    /// Warning Composite Temperature Threshold (Kelvin).
+    pub wctemp_k: u16,
+
+    /// Critical Composite Temperature Threshold (Kelvin).
+    pub cctemp_k: u16,
+
+    /// Maximum Time for Firmware Activation.
+    pub mtfa: u16,
+
+    /// Host Memory Buffer Preferred Size (bytes).
+    pub hmpre: u32,
+
+    /// Host Memory Buffer Minimum Size (bytes).
+    pub hmmin: u32,
+
+    /// Total NVM Capacity (bytes).
+    pub tnvmcap_bytes: u128,
+
+    /// Unallocated NVM Capacity (bytes).
+    pub unvmcap_bytes: u128,
+
+    /// Replay Protected Memory Block Support (bitfield).
+    pub rpmbs: u32,
+
+    /// Extended Device Self-test Time (minutes).
+    pub edstt: u16,
+
+    /// Device Self-test Options (bitfield).
+    pub dsto: u8,
+
+    /// Firmware Update Granularity.
+    pub fwug: u8,
+
+    /// Keep Alive Support.
+    pub kas: u16,
+
+    /// Host Controlled Thermal Management Attributes.
+    pub hctma: u16,
+
+    /// Minimum Thermal Management Temperature (Kelvin).
+    pub mntmt_k: u16,
+
+    /// Maximum Thermal Management Temperature (Kelvin).
+    pub mxtmt_k: u16,
+
+    /// Sanitize Capabilities (bitfield).
+    pub sanicap: u32,
+
+    /// Host Memory Buffer Minimum Descriptor Entry Size.
+    pub hmminds: u32,
+
+    /// Host Memory Buffer Maximum Descriptor Entries.
+    pub hmmaxd: u16,
+
+    /// NVM Set Identifier Maximum.
+    pub nsetidmax: u16,
+
+    /// Endurance Group Identifier Maximum.
+    pub endgidmax: u16,
+
+    /// ANA Transition Time.
+    pub anatt: u8,
+
+    /// ANA Capabilities.
+    pub anacap: u8,
+
+    /// ANA Group Identifier Maximum.
+    pub anagrpmax: u32,
+
+    /// Number of ANA Group Identifiers.
+    pub nanagrpid: u32,
+
+    /// Persistent Event Log Size (bytes).
+    pub pels: u32,
+
+    /// Domain Identifier.
+    pub domainid: u16,
+
+    /// Maximum Endurance Group Capacity (bytes).
+    pub megcap_bytes: u128,
+
+    /// Submission Queue Entry Size encoding.
+    pub sqes: u8,
+
+    /// Completion Queue Entry Size encoding.
+    pub cqes: u8,
+
+    /// Maximum Outstanding Commands.
+    pub maxcmd: u16,
+
+    /// Number of Namespaces.
+    pub nn: u32,
+
+    /// Optional NVM Command Support.
+    pub oncs: u16,
+
+    /// Fused Operation Support.
+    pub fuses: u16,
+
+    /// Format NVM Attributes.
+    pub fna: u8,
+
+    /// Volatile Write Cache.
+    pub vwc: u8,
+
+    /// Atomic Write Unit Normal (logical blocks).
+    pub awun: u16,
+
+    /// Atomic Write Unit Power Fail (logical blocks).
+    pub awupf: u16,
+
+    /// Vendor Specific Command Configuration.
+    pub icsvscc: u8,
+
+    /// Namespace Write Protection Capabilities.
+    pub nwpc: u8,
+
+    /// Atomic Compare & Write Unit (logical blocks).
+    pub acwu: u16,
+
+    /// Optional Copy Formats Supported.
+    pub ocfs: u16,
+
+    /// SGL Support.
+    pub sgls: u32,
+
+    /// Maximum Number of Allowed Namespaces.
+    pub mnan: u32,
+
+    /// Maximum Capacity of NVM Area.
+    pub maxcna: u32,
+
+    /// Subsystem NQN (ASCII).
+    pub subnqn: String,
+
+    /// I/O Command Capsule Supported Size.
+    pub ioccsz: u32,
+
+    /// I/O Response Capsule Supported Size.
+    pub iorcsz: u32,
+
+    /// In Capsule Data Offset.
+    pub icdoff: u16,
+
+    /// Fabric Controller Attributes.
+    pub fcatt: u8,
+
+    /// Management Service Data Block Descriptor.
+    pub msdbd: u8,
+
+    /// Optional Fabric Commands Support.
+    pub ofcs: u16,
+
+    /// Power State Descriptors.
+    pub psd: [nvme_id_power_state; 32],
+
+    /// Vendor Specific area (1024 bytes).
+    pub vs: [u8; 1024],
+}
+
+
+/// Constructor for NvmesIdCtrl
+impl NvmesIdCtrl {
+    pub fn new(nvme_name: String, raw: &nvme_id_ctrl) -> Self {
+        Self {}
+    }
+}
+
+/// Function to extract raw nvme_id_ctrl using the Identify admin command
+pub fn get_nvme_id_ctrl_raw(dev_path: &str) -> io::Result<nvme_id_ctrl> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true) // Here we need admin permission to send write commands
+        .open(dev_path)?; // path would be something like /dev/nvme0
+
+    let fd = file.as_raw_fd();
+
+    // Identify Controller payload is 4096 bytes based on the C bindings in the nvme_cli_sys crate.
+    // If nvme_id_ctrl from your crate is exactly 4096, great.
+    // If it's smaller, you should use a [u8; 4096] buffer instead.
+    let mut id: nvme_id_ctrl = unsafe { zeroed() };
+
+    let id_ptr = &mut id as *mut nvme_id_ctrl as u64;
+    let id_len = size_of::<nvme_id_ctrl>() as u32;
+
+    let cns: u8 = 0x01; // Identify Controller
+    let cntlid: u16 = 0x0000; // usually 0
+    let cdw10: u32 = (cns as u32) | ((cntlid as u32) << 16);
+
+    let mut cmd: nvme_admin_cmd = unsafe { zeroed() };
+    cmd.opcode = nvme_admin_identify as u8; // Identify (0x06)
+    cmd.nsid = 0x0000_0000;
+    cmd.addr = id_ptr;
+    cmd.data_len = id_len;
+    cmd.cdw10 = cdw10;
+    cmd.cdw11 = 0;
+    cmd.timeout_ms = 1000;
+
+    let ret = unsafe { nvme_cli_sys::nvme_ioctl_admin_cmd(fd, &mut cmd) };
+
+    match ret {
+        Ok(status) if status == 0 => Ok(id),
+        Ok(status) => Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("NVMe admin command failed, status={:#x}", status),
+        )),
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
+    }
+}
 
 #[derive(Debug, Serialize)]
 pub struct NvmesSmartLog {
@@ -174,7 +495,6 @@ pub struct NvmesSmartLog {
 // Constructor for NvmesSmartLog
 impl NvmesSmartLog {
     pub fn new(nvme_name: String, raw: &nvme_smart_log) -> Self {
-        // TODO: Add validation for values from unsafe crate
         Self {
             nvme_name,
             critical_warning: Some(raw.critical_warning as u64),
@@ -228,7 +548,7 @@ pub fn list_nvme_controllers() -> Vec<String> {
     names
 }
 
-/// Function to extract raw nvme_smart_log from a controller.
+/// Function to extract raw nvme_smart_log.
 /// NOTE - This function is heavily annotated because I was struggling to understand how data is extracted.
 pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
     let file = OpenOptions::new()
