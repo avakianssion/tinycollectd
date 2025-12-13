@@ -1,7 +1,7 @@
 // src/collector/nvme.rs
 //! NVMe SMART collection via linux_nvme_sys.
 
-use linux_nvme_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log};
+use nvme_cli_sys::{nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page, nvme_smart_log};
 use serde::Serialize;
 use std::fs::{self, OpenOptions};
 use std::io;
@@ -182,11 +182,7 @@ impl NvmesSmartLog {
             avail_spare: Some(raw.avail_spare as u64),
             spare_thresh: Some(raw.spare_thresh as u64),
             percent_used: Some(raw.percent_used as u64),
-            // NOTE: The linux_nvme_sys crate does not expose byte 06 (Endurance Group Critical
-            // Warning Summary) as a separate field. Instead, it's lumped into the rsvd6 reserved
-            // byte array. According to the NVMe spec, byte 06 is the endurance group warning field,
-            // which corresponds to rsvd6[0].
-            endurance_grp_critical_warning_summary: Some(raw.rsvd6[0] as u64),
+            endurance_grp_critical_warning_summary: Some(raw.endu_grp_crit_warn_sumry as u64),
             data_units_read: Some(u128::from_le_bytes(raw.data_units_read) as u64),
             data_units_written: Some(u128::from_le_bytes(raw.data_units_written) as u64),
             host_read_commands: Some(u128::from_le_bytes(raw.host_reads) as u64),
@@ -272,7 +268,7 @@ pub fn get_nvme_smart_log_raw(dev_path: &str) -> io::Result<nvme_smart_log> {
     cmd.cdw11 = 0;
     cmd.timeout_ms = 1000;
 
-    let ret = unsafe { linux_nvme_sys::nvme_ioctl_admin_cmd(fd, &mut cmd) };
+    let ret = unsafe { nvme_cli_sys::nvme_ioctl_admin_cmd(fd, &mut cmd) };
 
     match ret {
         Ok(status) if status == 0 => Ok(log),
