@@ -1,5 +1,5 @@
 // src/collector/nvme.rs
-//! NVMe SMART collection via linux_nvme_sys.
+//! NVMe metrics collection.
 
 use nvme_cli_sys::{
     nvme_admin_cmd, nvme_admin_opcode::nvme_admin_get_log_page,
