@@ -11,6 +11,11 @@ use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::unix::io::AsRawFd;
 
+///
+///
+/// id ctrl should be split into multiple strcuts for ease of use
+///
+
 #[derive(Debug, Serialize)]
 pub struct NvmesIdCtrl {
     /// NVMe device name (e.g., "nvme0")
@@ -283,7 +288,18 @@ pub struct NvmesIdCtrl {
 /// Constructor for NvmesIdCtrl
 impl NvmesIdCtrl {
     pub fn new(nvme_name: String, raw: &nvme_id_ctrl) -> Self {
-        Self {}
+        Self {
+
+            nvme_name, 
+            vid: Some(raw.vid as u16),
+            ssvid: Some(raw.ssvid as u16),
+            //serial_number: Some(raw.sn
+            //model_number:
+            //firmware_version
+            rec_arbit_burst: Some(raw.rab: u8),
+
+
+        }
     }
 }
 
